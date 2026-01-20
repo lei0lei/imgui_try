@@ -43,6 +43,7 @@ set(IMGUI_SOURCES
 # 创建可执行文件
 add_executable(example_sdl3_vulkan
     main.cpp
+    ui/title_bar.cpp
     ${IMGUI_SOURCES}
 )
 
@@ -59,6 +60,11 @@ target_link_libraries(example_sdl3_vulkan
     ${Vulkan_LIBRARIES}
 )
 
+# Windows 特定：隐藏控制台窗口
+if(WIN32)
+    target_link_options(example_sdl3_vulkan PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
+endif()
+
 # 自动复制 SDL3.dll 到可执行文件目录
 add_custom_command(TARGET example_sdl3_vulkan POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -66,10 +72,3 @@ add_custom_command(TARGET example_sdl3_vulkan POST_BUILD
     $<TARGET_FILE_DIR:example_sdl3_vulkan>
     COMMENT "Copying SDL3.dll to output directory"
 )
-
-# Windows 特定设置
-if(WIN32)
-    # 设置为窗口应用程序（不显示控制台）
-    # 如果需要看到 printf 输出，可以注释掉这行
-    # set_target_properties(example_sdl3_vulkan PROPERTIES WIN32_EXECUTABLE TRUE)
-endif()

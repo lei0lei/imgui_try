@@ -16,6 +16,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
+#include "ui/title_bar.h"
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
 #include <SDL3/SDL.h>
@@ -354,13 +355,15 @@ int main(int, char**)
 
     // Create window with Vulkan graphics context
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_BORDERLESS;
     SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+Vulkan example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
     if (window == nullptr)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
         return 1;
     }
+
+    SDL_SetWindowBordered(window, false); // force borderless to hide system title bar
 
     ImVector<const char*> extensions;
     {
@@ -443,7 +446,7 @@ int main(int, char**)
     //IM_ASSERT(font != nullptr);
 
     // Our state
-    bool show_demo_window = true;
+    bool show_demo_window = false;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -489,6 +492,17 @@ int main(int, char**)
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
+
+        TitleBarResult tb = DrawTitleBar(window);
+
+        static bool is_max = false;
+        if (tb.close) done = true;
+        if (tb.minimize) SDL_MinimizeWindow(window);
+        if (tb.maximize)
+        {
+            is_max ? SDL_RestoreWindow(window) : SDL_MaximizeWindow(window);
+            is_max = !is_max;
+        }
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
