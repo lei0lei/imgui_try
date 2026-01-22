@@ -17,6 +17,12 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
 #include "ui/title_bar.h"
+#include "ui/status_bar.h"
+#include "ui/activity_bar.h"
+#include "ui/primary_sidebar.h"
+#include "ui/panel.h"
+#include "ui/secondary_sidebar.h"
+#include "ui/editor_area.h"
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
 #include <SDL3/SDL.h>
@@ -33,7 +39,7 @@
 #include <volk.h>
 #endif
 
-//#define APP_USE_UNLIMITED_FRAME_RATE
+#define APP_USE_UNLIMITED_FRAME_RATE
 #ifdef _DEBUG
 #define APP_USE_VULKAN_DEBUG_REPORT
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
@@ -493,7 +499,136 @@ int main(int, char**)
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        TitleBarResult tb = DrawTitleBar(window);
+        const float title_h = 30.0f;
+        const float status_bar_h = 24.0f;
+        const float activity_bar_w = 48.0f;
+        const float primary_sidebar_w = 300.0f;
+        const float panel_h = 200.0f;
+        const float secondary_sidebar_w = 250.0f;
+        
+        // Panel visibility states (declare before DrawTitleBar)
+        static bool panel_visible = true;           // 底部面板显示状态
+        static bool secondary_visible = true;       // 右侧次要面板显示状态
+        
+        // Get primary sidebar visibility from ActivityBar module
+        // We'll need to query it after ActivityBar is drawn, but for title bar we need current state
+        // So we'll draw ActivityBar first, then title bar
+        
+        // Activity bar (leftmost navigation)
+        ActivityBarResult ab = DrawActivityBar(title_h, status_bar_h, activity_bar_w);
+        
+        // Now draw title bar with current panel states
+        TitleBarResult tb = DrawTitleBar(window, title_h, ab.sidebar_visible, panel_visible, secondary_visible);
+
+        // Status bar at bottom (automatically draws all borders)
+        StatusBarResult sb = DrawStatusBar(status_bar_h, title_h);
+        
+        // Handle layout button clicks from title bar
+        if (tb.toggle_primary_sidebar) {
+            TogglePrimarySidebar();                 // 切换左侧主面板
+        }
+        if (tb.toggle_panel) {
+            panel_visible = !panel_visible;         // 切换底部面板
+        }
+        if (tb.toggle_secondary_sidebar) {
+            secondary_visible = !secondary_visible; // 切换右侧次要面板
+        }
+        
+        // Calculate left offset based on sidebar visibility
+        float left_offset = activity_bar_w;
+        if (ab.sidebar_visible)
+        {
+            left_offset += primary_sidebar_w;
+            // Primary sidebar (file explorer, search, etc.) - only show if visible
+            PrimarySidebarResult ps = DrawPrimarySidebar(ab.selected_item, activity_bar_w, title_h, status_bar_h, primary_sidebar_w);
+        }
+
+        // Editor area (main content area)
+        static std::vector<EditorTab> editor_tabs;  // 编辑器标签页列表
+        float right_offset = secondary_visible ? secondary_sidebar_w : 0.0f;
+        EditorAreaResult ea = DrawEditorArea(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, editor_tabs);
+        
+        // 处理编辑器区域的事件
+        if (ea.closed_tab >= 0 && ea.closed_tab < (int)editor_tabs.size()) {
+            editor_tabs.erase(editor_tabs.begin() + ea.closed_tab);
+            // 如果关闭的是激活标签，激活下一个或上一个标签
+            if (!editor_tabs.empty()) {
+                int new_active = ea.closed_tab;
+                if (new_active >= (int)editor_tabs.size()) {
+                    new_active = (int)editor_tabs.size() - 1;
+                }
+                for (auto& tab : editor_tabs) tab.active = false;
+                editor_tabs[new_active].active = true;
+            }
+        }
+        if (ea.active_tab >= 0 && ea.active_tab < (int)editor_tabs.size()) {
+            // 切换激活标签
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs[ea.active_tab].active = true;
+        }
+
+        // Bottom panel (terminal, output, etc.)
+        if (panel_visible)
+        {
+            PanelResult panel = DrawPanel(left_offset, right_offset, status_bar_h, panel_h);
+        }
+        
+        // Secondary sidebar (outline, etc.)
+        if (secondary_visible)
+        {
+            SecondarySidebarResult ss = DrawSecondarySidebar(title_h, status_bar_h, panel_h, secondary_sidebar_w);
+            if (ss.request_close)
+                secondary_visible = false;
+        }
+        
+        // 处理标题栏菜单操作
+        if (tb.menu_action == MenuAction::FileNew2D) {
+            // 创建新的 2D 场景标签页
+            EditorTab new_tab;
+            new_tab.name = "2D-Scene-" + std::to_string(editor_tabs.size() + 1);
+            new_tab.path = "";
+            new_tab.modified = false;
+            new_tab.active = true;
+            new_tab.scene_type = SceneType::Scene2D;
+            // 取消其他标签的激活状态
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs.push_back(new_tab);
+        }
+        else if (tb.menu_action == MenuAction::FileNew3D) {
+            // 创建新的 3D 场景标签页
+            EditorTab new_tab;
+            new_tab.name = "3D-Scene-" + std::to_string(editor_tabs.size() + 1);
+            new_tab.path = "";
+            new_tab.modified = false;
+            new_tab.active = true;
+            new_tab.scene_type = SceneType::Scene3D;
+            // 取消其他标签的激活状态
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs.push_back(new_tab);
+        }
+        else if (tb.menu_action == MenuAction::FileNew) {
+            // 默认创建 3D 场景（向后兼容）
+            EditorTab new_tab;
+            new_tab.name = "Untitled-" + std::to_string(editor_tabs.size() + 1);
+            new_tab.path = "";
+            new_tab.modified = false;
+            new_tab.active = true;
+            new_tab.scene_type = SceneType::Scene3D;
+            // 取消其他标签的激活状态
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs.push_back(new_tab);
+        }
+        else if (tb.menu_action == MenuAction::FileOpen) {
+            // TODO: 打开文件对话框
+            // 暂时创建一个示例标签页
+            EditorTab new_tab;
+            new_tab.name = "example.cpp";
+            new_tab.path = "C:/path/to/example.cpp";
+            new_tab.modified = false;
+            new_tab.active = true;
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs.push_back(new_tab);
+        }
 
         static bool is_max = false;
         if (tb.close) done = true;
@@ -502,43 +637,6 @@ int main(int, char**)
         {
             is_max ? SDL_RestoreWindow(window) : SDL_MaximizeWindow(window);
             is_max = !is_max;
-        }
-
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        if (show_demo_window)
-            ImGui::ShowDemoWindow(&show_demo_window);
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
-        {
-            static float f = 0.0f;
-            static int counter = 0;
-
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-            ImGui::Checkbox("Another Window", &show_another_window);
-
-            ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-            ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-            if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                counter++;
-            ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
-
-        // 3. Show another simple window.
-        if (show_another_window)
-        {
-            ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-            ImGui::Text("Hello from another window!");
-            if (ImGui::Button("Close Me"))
-                show_another_window = false;
-            ImGui::End();
         }
 
         // Rendering

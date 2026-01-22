@@ -44,6 +44,12 @@ set(IMGUI_SOURCES
 add_executable(example_sdl3_vulkan
     main.cpp
     ui/title_bar.cpp
+    ui/status_bar.cpp
+    ui/activity_bar.cpp
+    ui/primary_sidebar.cpp
+    ui/panel.cpp
+    ui/secondary_sidebar.cpp
+    ui/editor_area.cpp
     ${IMGUI_SOURCES}
 )
 
