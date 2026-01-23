@@ -29,6 +29,7 @@
 #include <SDL3/SDL_vulkan.h>
 
 // This example doesn't compile with Emscripten yet! Awaiting SDL3 support.
+// 暂不支持webassembly编译，等待SDL3支持
 #ifdef __EMSCRIPTEN__
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
@@ -39,7 +40,8 @@
 #include <volk.h>
 #endif
 
-#define APP_USE_UNLIMITED_FRAME_RATE
+// #define APP_USE_UNLIMITED_FRAME_RATE
+// vulkan debug report
 #ifdef _DEBUG
 #define APP_USE_VULKAN_DEBUG_REPORT
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
@@ -59,6 +61,7 @@ static ImGui_ImplVulkanH_Window g_MainWindowData;
 static uint32_t                 g_MinImageCount = 2;
 static bool                     g_SwapChainRebuild = false;
 
+// vulkan API调用检查
 static void check_vk_result(VkResult err)
 {
     if (err == VK_SUCCESS)
@@ -362,7 +365,7 @@ int main(int, char**)
     // Create window with Vulkan graphics context
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_BORDERLESS;
-    SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+Vulkan example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
+    SDL_Window* window = SDL_CreateWindow("Window", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
     if (window == nullptr)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
@@ -451,9 +454,6 @@ int main(int, char**)
     //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
     //IM_ASSERT(font != nullptr);
 
-    // Our state
-    bool show_demo_window = false;
-    bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
@@ -504,7 +504,7 @@ int main(int, char**)
         const float activity_bar_w = 48.0f;
         const float primary_sidebar_w = 300.0f;
         const float panel_h = 200.0f;
-        const float secondary_sidebar_w = 250.0f;
+        const float secondary_sidebar_w = 300.0f;
         
         // Panel visibility states (declare before DrawTitleBar)
         static bool panel_visible = true;           // 底部面板显示状态

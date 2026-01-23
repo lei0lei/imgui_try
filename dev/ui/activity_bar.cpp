@@ -3,7 +3,7 @@
 
 // Global state for activity bar
 static ActivityBarItem g_selected = ActivityBarItem::Explorer;
-static bool g_sidebar_visible = true;
+static bool g_sidebar_visible = false;
 
 ActivityBarResult DrawActivityBar(float title_h, float status_bar_h, float width)
 {
