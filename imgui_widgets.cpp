@@ -134,7 +134,7 @@ static const ImU64          IM_U64_MAX = (2ULL * 9223372036854775807LL + 1);
 //-------------------------------------------------------------------------
 
 // For InputTextEx()
-static bool     InputTextFilterCharacter(ImGuiContext* ctx, unsigned int* p_char, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data, bool input_source_is_clipboard = false);
+static bool     InputTextFilterCharacter(ImGuiContext* ctx, ImGuiInputTextState* state, unsigned int* p_char, ImGuiInputTextCallback callback, void* user_data, bool input_source_is_clipboard = false);
 static ImVec2   InputTextCalcTextSize(ImGuiContext* ctx, const char* text_begin, const char* text_end_display, const char* text_end, const char** out_remaining = NULL, ImVec2* out_offset = NULL, ImDrawTextFlags flags = 0);
 
 //-------------------------------------------------------------------------
@@ -2065,10 +2065,7 @@ void ImGui::EndCombo()
     char name[16];
     ImFormatString(name, IM_COUNTOF(name), "##Combo_%02d", g.BeginComboDepth); // FIXME: Move those to helpers?
     if (strcmp(g.CurrentWindow->Name, name) != 0)
-    {
-        IM_ASSERT_USER_ERROR(0, "Calling EndCombo() in wrong window!");
-        return;
-    }
+        IM_ASSERT_USER_ERROR_RET(0, "Calling EndCombo() in wrong window!");
     EndPopup();
 }
 
@@ -4307,6 +4304,7 @@ void ImGuiInputTextState::ClearSelection()                  { Stb->select_start 
 int  ImGuiInputTextState::GetCursorPos() const              { return Stb->cursor; }
 int  ImGuiInputTextState::GetSelectionStart() const         { return Stb->select_start; }
 int  ImGuiInputTextState::GetSelectionEnd() const           { return Stb->select_end; }
+void ImGuiInputTextState::SetSelection(int start, int end)  { Stb->select_start = start; Stb->cursor = Stb->select_end = end; }
 float ImGuiInputTextState::GetPreferredOffsetX() const      { return Stb->has_preferred_x ? Stb->preferred_x : -1; }
 void ImGuiInputTextState::SelectAll()                       { Stb->select_start = 0; Stb->cursor = Stb->select_end = TextLen; Stb->has_preferred_x = 0; }
 void ImGuiInputTextState::ReloadUserBufAndSelectAll()       { WantReloadUserBuf = true; ReloadSelectionStart = 0; ReloadSelectionEnd = INT_MAX; }
@@ -4411,9 +4409,10 @@ void ImGui::PopPasswordFont()
 }
 
 // Return false to discard a character.
-static bool InputTextFilterCharacter(ImGuiContext* ctx, unsigned int* p_char, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data, bool input_source_is_clipboard)
+static bool InputTextFilterCharacter(ImGuiContext* ctx, ImGuiInputTextState* state, unsigned int* p_char, ImGuiInputTextCallback callback, void* user_data, bool input_source_is_clipboard)
 {
     unsigned int c = *p_char;
+    ImGuiInputTextFlags flags = state->Flags;
 
     // Filter non-printable (NB: isprint is unreliable! see #2467)
     bool apply_named_filters = true;
@@ -4503,9 +4502,11 @@ static bool InputTextFilterCharacter(ImGuiContext* ctx, unsigned int* p_char, Im
         ImGuiContext& g = *GImGui;
         ImGuiInputTextCallbackData callback_data;
         callback_data.Ctx = &g;
+        callback_data.ID = state->ID;
+        callback_data.Flags = flags;
         callback_data.EventFlag = ImGuiInputTextFlags_CallbackCharFilter;
         callback_data.EventChar = (ImWchar)c;
-        callback_data.Flags = flags;
+        callback_data.EventActivated = (g.ActiveId == state->ID && g.ActiveIdIsJustActivated);
         callback_data.UserData = user_data;
         if (callback(&callback_data) != 0)
             return false;
@@ -5022,7 +5023,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
             if (Shortcut(ImGuiKey_Tab, ImGuiInputFlags_Repeat, id))
             {
                 unsigned int c = '\t'; // Insert TAB
-                if (InputTextFilterCharacter(&g, &c, flags, callback, callback_user_data))
+                if (InputTextFilterCharacter(&g, state, &c, callback, callback_user_data))
                     state->OnCharPressed(c);
             }
             // FIXME: Implement Shift+Tab
@@ -5045,7 +5046,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                     unsigned int c = (unsigned int)io.InputQueueCharacters[n];
                     if (c == '\t') // Skip Tab, see above.
                         continue;
-                    if (InputTextFilterCharacter(&g, &c, flags, callback, callback_user_data))
+                    if (InputTextFilterCharacter(&g, state, &c, callback, callback_user_data))
                         state->OnCharPressed(c);
                 }
 
@@ -5131,7 +5132,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
             {
                 // Insert new line
                 unsigned int c = '\n';
-                if (InputTextFilterCharacter(&g, &c, flags, callback, callback_user_data))
+                if (InputTextFilterCharacter(&g, state, &c, callback, callback_user_data))
                     state->OnCharPressed(c);
             }
         }
@@ -5200,7 +5201,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                     unsigned int c;
                     int in_len = ImTextCharFromUtf8(&c, s, clipboard_end);
                     s += in_len;
-                    if (!InputTextFilterCharacter(&g, &c, flags, callback, callback_user_data, true))
+                    if (!InputTextFilterCharacter(&g, state, &c, callback, callback_user_data, true))
                         continue;
                     char c_utf8[5];
                     ImTextCharToUtf8(c_utf8, c);
@@ -5299,8 +5300,10 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
                 {
                     ImGuiInputTextCallbackData callback_data;
                     callback_data.Ctx = &g;
-                    callback_data.EventFlag = event_flag;
+                    callback_data.ID = id;
                     callback_data.Flags = flags;
+                    callback_data.EventFlag = event_flag;
+                    callback_data.EventActivated = (g.ActiveId == state->ID && g.ActiveIdIsJustActivated);
                     callback_data.UserData = callback_user_data;
 
                     // FIXME-OPT: Undo stack reconcile needs a backup of the data until we rework API, see #7925
@@ -5376,8 +5379,10 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
         {
             ImGuiInputTextCallbackData callback_data;
             callback_data.Ctx = &g;
-            callback_data.EventFlag = ImGuiInputTextFlags_CallbackResize;
+            callback_data.ID = id;
             callback_data.Flags = flags;
+            callback_data.EventFlag = ImGuiInputTextFlags_CallbackResize;
+            callback_data.EventActivated = (g.ActiveId == state->ID && g.ActiveIdIsJustActivated);
             callback_data.Buf = buf;
             callback_data.BufTextLen = apply_new_text_length;
             callback_data.BufSize = ImMax(buf_size, apply_new_text_length + 1);
@@ -5633,7 +5638,7 @@ bool ImGui::InputTextEx(const char* label, const char* hint, char* buf, int buf_
             g.LastItemData.StatusFlags = item_data_backup.StatusFlags;
         }
     }
-    if (state)
+    if (state && is_readonly)
         state->TextSrc = NULL;
 
     // Log as text
@@ -9065,6 +9070,10 @@ void ImGui::EndMenuBar()
             NavMoveRequestForward(g.NavMoveDir, g.NavMoveClipDir, g.NavMoveFlags, g.NavMoveScrollFlags); // Repeat
         }
     }
+    else
+    {
+        NavMoveRequestTryWrapping(window, ImGuiNavMoveFlags_WrapX);
+    }
 
     PopClipRect();
     PopID();
@@ -9150,11 +9159,7 @@ bool ImGui::BeginMainMenuBar()
 void ImGui::EndMainMenuBar()
 {
     ImGuiContext& g = *GImGui;
-    if (!g.CurrentWindow->DC.MenuBarAppending)
-    {
-        IM_ASSERT_USER_ERROR(0, "Calling EndMainMenuBar() not from a menu-bar!"); // Not technically testing that it is the main menu bar
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(g.CurrentWindow->DC.MenuBarAppending, "Calling EndMainMenuBar() not from a menu-bar!"); // Not technically testing that it is the main menu bar
 
     EndMenuBar();
     g.CurrentWindow->Flags |= ImGuiWindowFlags_NoSavedSettings; // Restore _NoSavedSettings (#8356)
@@ -9414,12 +9419,8 @@ void ImGui::EndMenu()
     // Nav: When a left move request our menu failed, close ourselves.
     ImGuiContext& g = *GImGui;
     ImGuiWindow* window = g.CurrentWindow;
+    IM_ASSERT_USER_ERROR_RET((window->Flags & (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu)) == (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu), "Calling EndMenu() in wrong window!");
 
-    if ((window->Flags & (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu)) != (ImGuiWindowFlags_Popup | ImGuiWindowFlags_ChildMenu))
-    {
-        IM_ASSERT_USER_ERROR(0, "Calling EndMenu() in wrong window!");
-        return;
-    }
     ImGuiWindow* parent_window = window->ParentWindow;  // Should always be != NULL is we passed assert.
     if (window->BeginCount == window->BeginCountPreviousFrame)
         if (g.NavMoveDir == ImGuiDir_Left && NavMoveRequestButNoResultYet())
@@ -9716,11 +9717,7 @@ void    ImGui::EndTabBar()
         return;
 
     ImGuiTabBar* tab_bar = g.CurrentTabBar;
-    if (tab_bar == NULL)
-    {
-        IM_ASSERT_USER_ERROR(tab_bar != NULL, "Mismatched BeginTabBar()/EndTabBar()!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(tab_bar != NULL, "Mismatched BeginTabBar()/EndTabBar()!");
 
     // Fallback in case no TabItem have been submitted
     if (tab_bar->WantLayout)
@@ -10361,11 +10358,7 @@ bool    ImGui::BeginTabItem(const char* label, bool* p_open, ImGuiTabItemFlags f
         return false;
 
     ImGuiTabBar* tab_bar = g.CurrentTabBar;
-    if (tab_bar == NULL)
-    {
-        IM_ASSERT_USER_ERROR(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
-        return false;
-    }
+    IM_ASSERT_USER_ERROR_RETV(tab_bar != NULL, false, "Needs to be called between BeginTabBar() and EndTabBar()!");
     IM_ASSERT((flags & ImGuiTabItemFlags_Button) == 0); // BeginTabItem() Can't be used with button flags, use TabItemButton() instead!
 
     bool ret = TabItemEx(tab_bar, label, p_open, flags, NULL);
@@ -10385,11 +10378,7 @@ void    ImGui::EndTabItem()
         return;
 
     ImGuiTabBar* tab_bar = g.CurrentTabBar;
-    if (tab_bar == NULL)
-    {
-        IM_ASSERT_USER_ERROR(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
     IM_ASSERT(tab_bar->LastTabItemIdx >= 0);
     ImGuiTabItem* tab = &tab_bar->Tabs[tab_bar->LastTabItemIdx];
     if (!(tab->Flags & ImGuiTabItemFlags_NoPushId))
@@ -10404,11 +10393,7 @@ bool    ImGui::TabItemButton(const char* label, ImGuiTabItemFlags flags)
         return false;
 
     ImGuiTabBar* tab_bar = g.CurrentTabBar;
-    if (tab_bar == NULL)
-    {
-        IM_ASSERT_USER_ERROR(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
-        return false;
-    }
+    IM_ASSERT_USER_ERROR_RETV(tab_bar != NULL, false, "Needs to be called between BeginTabBar() and EndTabBar()!");
     return TabItemEx(tab_bar, label, NULL, flags | ImGuiTabItemFlags_Button | ImGuiTabItemFlags_NoReorder, NULL);
 }
 
@@ -10420,11 +10405,7 @@ void    ImGui::TabItemSpacing(const char* str_id, ImGuiTabItemFlags flags, float
         return;
 
     ImGuiTabBar* tab_bar = g.CurrentTabBar;
-    if (tab_bar == NULL)
-    {
-        IM_ASSERT_USER_ERROR(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
-        return;
-    }
+    IM_ASSERT_USER_ERROR_RET(tab_bar != NULL, "Needs to be called between BeginTabBar() and EndTabBar()!");
     SetNextItemWidth(width);
     TabItemEx(tab_bar, str_id, NULL, flags | ImGuiTabItemFlags_Button | ImGuiTabItemFlags_NoReorder | ImGuiTabItemFlags_Invisible, NULL);
 }
