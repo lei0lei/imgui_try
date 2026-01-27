@@ -102,8 +102,8 @@ PrimarySidebarResult DrawPrimarySidebar(ActivityBarItem active_item,
     ImGui::PopStyleVar(3);
 
     // Right border
-    ImDrawList* fg = ImGui::GetForegroundDrawList();
-    fg->AddLine(ImVec2(sidebar_x + width - 1, sidebar_start_y), 
+    ImDrawList* _bg = ImGui::GetBackgroundDrawList();
+    _bg->AddLine(ImVec2(sidebar_x + width - 1, sidebar_start_y), 
                 ImVec2(sidebar_x + width - 1, sidebar_end_y), 
                 IM_COL32(62, 62, 66, 255), 1.0f);
 

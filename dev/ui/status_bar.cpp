@@ -46,17 +46,17 @@ StatusBarResult DrawStatusBar(float status_bar_h, float title_h)
     ImGui::PopStyleVar(3);
 
     // Draw border line at top of status bar
-    ImDrawList* fg = ImGui::GetForegroundDrawList();
+    ImDrawList* _bg = ImGui::GetBackgroundDrawList();
     ImU32 border_color = IM_COL32(62, 62, 66, 255);  // VS Code style #3E3E42
     ImVec2 line_start = ImVec2(0, status_bar_y - 1);
     ImVec2 line_end = ImVec2(io.DisplaySize.x, status_bar_y - 1);
-    fg->AddLine(line_start, line_end, border_color, 2.0f);
+    _bg->AddLine(line_start, line_end, border_color, 2.0f);
     
     // Draw left and right borders (complete window frame)
-    fg->AddLine(ImVec2(0, title_h), 
+    _bg->AddLine(ImVec2(0, title_h), 
                 ImVec2(0, io.DisplaySize.y - status_bar_h), 
                 border_color, 2.0f);
-    fg->AddLine(ImVec2(io.DisplaySize.x - 1, title_h), 
+    _bg->AddLine(ImVec2(io.DisplaySize.x - 1, title_h), 
                 ImVec2(io.DisplaySize.x - 1, io.DisplaySize.y - status_bar_h), 
                 border_color, 2.0f);
 

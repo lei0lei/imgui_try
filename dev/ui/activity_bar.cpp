@@ -10,10 +10,10 @@ ActivityBarResult DrawActivityBar(float title_h, float status_bar_h, float width
     ActivityBarResult result{};
     ImGuiIO& io = ImGui::GetIO();
 
-    // VS Code activity bar color
+    // 侧边栏颜色
     ImVec4 bg_color = ImVec4(0.2f, 0.2f, 0.2f, 1.0f);  // #333333
-    ImVec4 hover_color = ImVec4(0.3f, 0.3f, 0.3f, 1.0f);
-    ImVec4 active_color = ImVec4(0.25f, 0.25f, 0.25f, 1.0f);
+    ImVec4 hover_color = ImVec4(0.35f, 0.35f, 0.35f, 1.0f);
+    ImVec4 active_color = ImVec4(0.25f, 0.25f, 0.5f, 1.0f); //
     ImVec4 icon_color = ImVec4(0.86f, 0.86f, 0.86f, 1.0f);
 
     // Background
@@ -22,7 +22,6 @@ ActivityBarResult DrawActivityBar(float title_h, float status_bar_h, float width
     float bar_end_y = io.DisplaySize.y - status_bar_h;
     bg->AddRectFilled(ImVec2(0, bar_start_y), ImVec2(width, bar_end_y), ImGui::GetColorU32(bg_color));
 
-    // Activity bar window
     ImGui::SetNextWindowPos(ImVec2(0, bar_start_y));
     ImGui::SetNextWindowSize(ImVec2(width, bar_end_y - bar_start_y));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 8));
@@ -43,7 +42,6 @@ ActivityBarResult DrawActivityBar(float title_h, float status_bar_h, float width
     struct ActivityItem {
         ActivityBarItem id;
         const char* tooltip;
-        // We'll draw simple icons with shapes
     };
 
     ActivityItem items[] = {
@@ -163,8 +161,8 @@ ActivityBarResult DrawActivityBar(float title_h, float status_bar_h, float width
     ImGui::PopStyleVar(4);
 
     // Right border
-    ImDrawList* fg = ImGui::GetForegroundDrawList();
-    fg->AddLine(ImVec2(width - 1, bar_start_y), 
+    ImDrawList* _bg = ImGui::GetBackgroundDrawList();
+    _bg->AddLine(ImVec2(width - 1, bar_start_y), 
                 ImVec2(width - 1, bar_end_y), 
                 IM_COL32(62, 62, 66, 255), 1.0f);
 

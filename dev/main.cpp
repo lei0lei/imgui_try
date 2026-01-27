@@ -361,6 +361,9 @@ int main(int, char**)
         printf("Error: SDL_Init(): %s\n", SDL_GetError());
         return 1;
     }
+    // Enable double buffering
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+
 
     // Create window with Vulkan graphics context
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
@@ -372,7 +375,8 @@ int main(int, char**)
         return 1;
     }
 
-    SDL_SetWindowBordered(window, false); // force borderless to hide system title bar
+    // 去除操作系统标题栏
+    SDL_SetWindowBordered(window, false); 
 
     ImVector<const char*> extensions;
     {
@@ -466,6 +470,8 @@ int main(int, char**)
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         // [If using SDL_MAIN_USE_CALLBACKS: call ImGui_ImplSDL3_ProcessEvent() from your SDL_AppEvent() function]
+        
+        // 检查是否有关闭窗口或者退出事件
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -483,7 +489,7 @@ int main(int, char**)
             continue;
         }
 
-        // Resize swap chain?
+        // 检查窗口是否发生变化如果发生变化需要调整vulkan交换链
         int fb_width, fb_height;
         SDL_GetWindowSize(window, &fb_width, &fb_height);
         if (fb_width > 0 && fb_height > 0 && (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height))
@@ -494,7 +500,7 @@ int main(int, char**)
             g_SwapChainRebuild = false;
         }
 
-        // Start the Dear ImGui frame
+        // 创建新帧渲染
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
@@ -507,20 +513,20 @@ int main(int, char**)
         const float secondary_sidebar_w = 300.0f;
         
         // Panel visibility states (declare before DrawTitleBar)
-        static bool panel_visible = true;           // 底部面板显示状态
-        static bool secondary_visible = true;       // 右侧次要面板显示状态
+        static bool panel_visible = false;           // 底部面板显示状态
+        static bool secondary_visible = false;       // 右侧次要面板显示状态
         
         // Get primary sidebar visibility from ActivityBar module
         // We'll need to query it after ActivityBar is drawn, but for title bar we need current state
         // So we'll draw ActivityBar first, then title bar
         
-        // Activity bar (leftmost navigation)
+        // Activity bar
         ActivityBarResult ab = DrawActivityBar(title_h, status_bar_h, activity_bar_w);
         
-        // Now draw title bar with current panel states
+        // Title bar
         TitleBarResult tb = DrawTitleBar(window, title_h, ab.sidebar_visible, panel_visible, secondary_visible);
 
-        // Status bar at bottom (automatically draws all borders)
+        // Status bar
         StatusBarResult sb = DrawStatusBar(status_bar_h, title_h);
         
         // Handle layout button clicks from title bar
@@ -549,23 +555,8 @@ int main(int, char**)
         EditorAreaResult ea = DrawEditorArea(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, editor_tabs);
         
         // 处理编辑器区域的事件
-        if (ea.closed_tab >= 0 && ea.closed_tab < (int)editor_tabs.size()) {
-            editor_tabs.erase(editor_tabs.begin() + ea.closed_tab);
-            // 如果关闭的是激活标签，激活下一个或上一个标签
-            if (!editor_tabs.empty()) {
-                int new_active = ea.closed_tab;
-                if (new_active >= (int)editor_tabs.size()) {
-                    new_active = (int)editor_tabs.size() - 1;
-                }
-                for (auto& tab : editor_tabs) tab.active = false;
-                editor_tabs[new_active].active = true;
-            }
-        }
-        if (ea.active_tab >= 0 && ea.active_tab < (int)editor_tabs.size()) {
-            // 切换激活标签
-            for (auto& tab : editor_tabs) tab.active = false;
-            editor_tabs[ea.active_tab].active = true;
-        }
+        HandleEditorAreaEvents(editor_tabs, ea.closed_tab, ea.active_tab);
+
 
         // Bottom panel (terminal, output, etc.)
         if (panel_visible)

@@ -33,3 +33,5 @@ EditorAreaResult DrawEditorArea(
     bool panel_visible,         // 底部面板是否可见
     std::vector<EditorTab>& tabs  // 编辑器标签页列表
 );
+
+void HandleEditorAreaEvents(std::vector<EditorTab>& editor_tabs, int closed_tab, int active_tab);

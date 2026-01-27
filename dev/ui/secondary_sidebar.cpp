@@ -78,8 +78,8 @@ SecondarySidebarResult DrawSecondarySidebar(float title_h,
     ImGui::PopStyleVar(3);
 
     // Left border
-    ImDrawList* fg = ImGui::GetForegroundDrawList();
-    fg->AddLine(ImVec2(sidebar_x, sidebar_start_y), 
+    ImDrawList* _bg = ImGui::GetBackgroundDrawList();
+    _bg->AddLine(ImVec2(sidebar_x, sidebar_start_y), 
                 ImVec2(sidebar_x, sidebar_end_y), 
                 IM_COL32(62, 62, 66, 255), 1.0f);
 

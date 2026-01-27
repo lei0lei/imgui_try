@@ -43,6 +43,27 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 )
 
+# Lua 源码路径（根据你的实际路径修改）
+set(LUA_SOURCE_DIR "D:/p90x/lua-5.5.0.tar/lua-5.5.0")
+
+# 将 Lua 作为子项目编译
+if(EXISTS "${LUA_SOURCE_DIR}/CMakeLists.txt")
+    message(STATUS "Building Lua from source: ${LUA_SOURCE_DIR}")
+
+    # 添加 Lua 子目录
+    add_subdirectory(${LUA_SOURCE_DIR} ${CMAKE_BINARY_DIR}/Lua EXCLUDE_FROM_ALL)
+
+    set(LUA_LIBRARY lua) # 假设生成的库名为 lua
+else()
+    message(FATAL_ERROR "Lua source not found at ${LUA_SOURCE_DIR}")
+endif()
+
+# 包含目录
+include_directories(${LUA_SOURCE_DIR}/include)
+
+# 链接库
+list(APPEND EXTRA_LIBRARIES ${LUA_LIBRARY})
+
 # 创建可执行文件
 add_executable(example_sdl3_vulkan
     main.cpp
@@ -67,6 +88,7 @@ target_include_directories(example_sdl3_vulkan PRIVATE
 target_link_libraries(example_sdl3_vulkan
     ${SDL3_LIBRARY}
     ${Vulkan_LIBRARIES}
+    ${EXTRA_LIBRARIES} # 添加 Lua 库
 )
 
 # Windows 特定：隐藏控制台窗口

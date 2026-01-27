@@ -44,7 +44,7 @@ PanelResult DrawPanel(float left_offset, float right_offset, float status_bar_h,
     ImVec2 window_pos = ImGui::GetWindowPos();
 
     // Tab bar
-    const char* tabs[] = { "PROBLEMS", "OUTPUT", "DEBUG CONSOLE", "TERMINAL" };
+    const char* tabs[] = { "PROBLEMS", "OUTPUT", "DEBUG", "TERMINAL" };
     const int tab_count = 4;
     static int active_tab = 3;  // Default to TERMINAL
     
@@ -120,8 +120,8 @@ PanelResult DrawPanel(float left_offset, float right_offset, float status_bar_h,
     ImGui::PopStyleVar(4);
 
     // Top border
-    ImDrawList* fg = ImGui::GetForegroundDrawList();
-    fg->AddLine(ImVec2(panel_x, panel_y), 
+    ImDrawList* _fg = ImGui::GetBackgroundDrawList();
+    _fg->AddLine(ImVec2(panel_x, panel_y), 
                 ImVec2(panel_x + panel_width, panel_y), 
                 IM_COL32(62, 62, 66, 255), 1.0f);
 

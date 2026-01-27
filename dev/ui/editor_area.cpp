@@ -8,7 +8,7 @@ static void DrawWelcomeScreen(ImVec2 area_min, ImVec2 area_max)
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 center = ImVec2((area_min.x + area_max.x) * 0.5f, (area_min.y + area_max.y) * 0.5f);
     
-    // VS Code 风格的背景色
+    // 背景色
     ImU32 bg_color = IM_COL32(30, 30, 30, 255);  // #1E1E1E
     draw_list->AddRectFilled(area_min, area_max, bg_color);
     
@@ -416,4 +416,26 @@ EditorAreaResult DrawEditorArea(
     ImGui::PopStyleVar(3);
     
     return result;
+}
+
+void HandleEditorAreaEvents(std::vector<EditorTab>& editor_tabs, int closed_tab, int active_tab) {
+    // 处理关闭标签页事件
+    if (closed_tab >= 0 && closed_tab < static_cast<int>(editor_tabs.size())) {
+        editor_tabs.erase(editor_tabs.begin() + closed_tab);
+        // 如果关闭的是激活标签，激活下一个或上一个标签
+        if (!editor_tabs.empty()) {
+            int new_active = closed_tab;
+            if (new_active >= static_cast<int>(editor_tabs.size())) {
+                new_active = static_cast<int>(editor_tabs.size()) - 1;
+            }
+            for (auto& tab : editor_tabs) tab.active = false;
+            editor_tabs[new_active].active = true;
+        }
+    }
+
+    // 处理切换激活标签事件
+    if (active_tab >= 0 && active_tab < static_cast<int>(editor_tabs.size())) {
+        for (auto& tab : editor_tabs) tab.active = false;
+        editor_tabs[active_tab].active = true;
+    }
 }
