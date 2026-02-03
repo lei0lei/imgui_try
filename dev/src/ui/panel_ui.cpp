@@ -1,0 +1,129 @@
+#include "panel_ui.h"
+#include <imgui.h>
+#include "../workbench/workbench_config.h"
+
+PanelResult DrawPanelUI(float left_offset, float right_offset, float status_bar_h, float panel_h, PanelService& panel_service) {
+    PanelResult result{};
+    ImGuiIO& io = ImGui::GetIO();
+
+    // VS Code panel colors
+    const WorkbenchTheme& theme = GetWorkbenchTheme();
+    const WorkbenchThemeColors& colors = theme.colors;
+    const WorkbenchThemeSizes& sizes = theme.sizes;
+
+    ImVec4 bg_color = colors.panel_bg;
+    ImVec4 tab_bg = colors.panel_tab_bg;
+    ImVec4 tab_active = colors.panel_tab_active;
+    ImVec4 text_color = colors.panel_text;
+
+    float panel_x = left_offset;
+    float panel_y = io.DisplaySize.y - status_bar_h - panel_h;
+    float panel_width = io.DisplaySize.x - left_offset - right_offset;
+
+    // Background
+    ImDrawList* bg = ImGui::GetBackgroundDrawList();
+    bg->AddRectFilled(ImVec2(panel_x, panel_y), 
+                     ImVec2(panel_x + panel_width, io.DisplaySize.y - status_bar_h), 
+                     ImGui::GetColorU32(bg_color));
+
+    // Panel window
+    ImGui::SetNextWindowPos(ImVec2(panel_x, panel_y));
+    ImGui::SetNextWindowSize(ImVec2(panel_width, panel_h));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                              ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
+                              ImGuiWindowFlags_NoBringToFrontOnFocus;
+
+    ImGui::Begin("Panel", nullptr, flags);
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImVec2 window_pos = ImGui::GetWindowPos();
+
+    // Tab bar
+    const char* tabs[] = { "PROBLEMS", "OUTPUT", "DEBUG", "TERMINAL" };
+    const int tab_count = 4;
+    // 用 PanelService 管理 tab 状态
+    int active_tab = (int)panel_service.GetActiveTab();
+    float tab_height = sizes.panel_tab_height;
+    float tab_width = sizes.panel_tab_width;
+
+    // Draw tabs
+    for (int i = 0; i < tab_count; i++)
+    {
+        ImVec2 tab_min = ImVec2(window_pos.x + i * tab_width, window_pos.y);
+        ImVec2 tab_max = ImVec2(tab_min.x + tab_width, tab_min.y + tab_height);
+        ImVec2 mouse_pos = ImGui::GetMousePos();
+        bool is_hovered = (mouse_pos.x >= tab_min.x && mouse_pos.x <= tab_max.x &&
+                          mouse_pos.y >= tab_min.y && mouse_pos.y <= tab_max.y);
+        bool is_active = (active_tab == i);
+
+        // Tab background
+        ImU32 tab_color = is_active ? ImGui::GetColorU32(tab_active) : ImGui::GetColorU32(tab_bg);
+        if (!is_active && is_hovered)
+        {
+            tab_color = ImGui::GetColorU32(colors.panel_tab_hover);
+        }
+        draw_list->AddRectFilled(tab_min, tab_max, tab_color);
+
+        // Tab text
+        ImVec2 text_size = ImGui::CalcTextSize(tabs[i]);
+        ImVec2 text_pos = ImVec2(tab_min.x + (tab_width - text_size.x) * 0.5f,
+                                tab_min.y + (tab_height - text_size.y) * 0.5f);
+        draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), tabs[i]);
+
+        // Active indicator (top border)
+        if (is_active)
+        {
+            draw_list->AddRectFilled(ImVec2(tab_min.x, tab_min.y), 
+                                   ImVec2(tab_max.x, tab_min.y + sizes.panel_active_indicator_h), 
+                                   ImGui::GetColorU32(colors.panel_active_indicator));
+        }
+
+        // Handle click
+        if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            panel_service.SetActiveTab((PanelTab)i);
+            active_tab = i;
+        }
+    }
+
+    // Content area
+    ImGui::SetCursorPos(ImVec2(sizes.panel_content_padding_x, tab_height + sizes.panel_content_padding_y));
+    ImGui::BeginChild("PanelContent", ImVec2(panel_width - sizes.panel_content_padding_x * 2.0f, panel_h - tab_height - sizes.panel_content_padding_y * 2.0f), false);
+
+    switch (panel_service.GetActiveTab())
+    {
+        case PanelTab::Problems:
+            ImGui::Text("No problems detected");
+            break;
+        case PanelTab::Output:
+            ImGui::Text("Output channel:");
+            ImGui::Text("Build completed successfully");
+            break;
+        case PanelTab::DebugConsole:
+            ImGui::Text("Debug console");
+            break;
+        case PanelTab::Terminal:
+            ImGui::TextColored(colors.panel_terminal_prompt, "$ ");
+            ImGui::SameLine();
+            ImGui::Text("Ready");
+            break;
+    }
+
+    ImGui::EndChild();
+
+    ImGui::End();
+    ImGui::PopStyleVar(4);
+
+    // Top border
+    ImDrawList* _fg = ImGui::GetBackgroundDrawList();
+    _fg->AddLine(ImVec2(panel_x, panel_y), 
+                ImVec2(panel_x + panel_width, panel_y), 
+                ImGui::GetColorU32(colors.panel_border), sizes.panel_border_thickness);
+
+    return result;
+}

@@ -5,7 +5,7 @@ add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
 # 设置 C++ 标准
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # SDL3 源码路径（根据你的实际路径修改）
@@ -64,18 +64,17 @@ include_directories(${LUA_SOURCE_DIR}/include)
 # 链接库
 list(APPEND EXTRA_LIBRARIES ${LUA_LIBRARY})
 
-# 创建可执行文件
-add_executable(example_sdl3_vulkan
-    main.cpp
-    ui/title_bar.cpp
-    ui/status_bar.cpp
-    ui/activity_bar.cpp
-    ui/primary_sidebar.cpp
-    ui/panel.cpp
-    ui/secondary_sidebar.cpp
-    ui/editor_area.cpp
-    ${IMGUI_SOURCES}
+
+# 自动收集所有 cpp 文件，减少维护负担
+file(GLOB SRC_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/services/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/command/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/workbench/**/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/workbench/*.cpp"
 )
+add_executable(example_sdl3_vulkan ${SRC_FILES} ${IMGUI_SOURCES})
 
 # 包含目录
 target_include_directories(example_sdl3_vulkan PRIVATE
