@@ -7,6 +7,24 @@ int EditorAreaService::GetActiveTabIndex() const {
     return -1;
 }
 
+EditorTab* EditorAreaService::GetActiveTab() {
+    int idx = GetActiveTabIndex();
+    if (idx < 0 || idx >= static_cast<int>(tabs_.size())) return nullptr;
+    return &tabs_[idx];
+}
+
+const EditorTab* EditorAreaService::GetActiveTab() const {
+    int idx = GetActiveTabIndex();
+    if (idx < 0 || idx >= static_cast<int>(tabs_.size())) return nullptr;
+    return &tabs_[idx];
+}
+
+SceneType EditorAreaService::GetActiveSceneType(SceneType fallback) const {
+    const EditorTab* tab = GetActiveTab();
+    if (!tab) return fallback;
+    return tab->scene_type;
+}
+
 void EditorAreaService::AddTab(const EditorTab& tab) {
     for (auto& t : tabs_) t.active = false;
     tabs_.push_back(tab);

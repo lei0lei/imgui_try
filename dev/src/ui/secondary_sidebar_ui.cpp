@@ -6,7 +6,10 @@ SecondarySidebarResult DrawSecondarySidebarUI(float title_h,
                                               float status_bar_h,
                                               float panel_h,
                                               float width,
-                                              SecondarySidebarService& service)
+                                              SecondarySidebarService& service,
+                                              ViewRegistry& view_registry,
+                                              SceneType mode,
+                                              EditorTab* active_tab)
 {
     SecondarySidebarResult result{};
     if (!service.IsVisible())
@@ -64,12 +67,22 @@ SecondarySidebarResult DrawSecondarySidebarUI(float title_h,
             result.request_close = true;
     }
 
-    ImGui::TextColored(text_color, "OUTLINE");
-    ImGui::Separator();
-    ImGui::Spacing();
-    ImGui::Text("No outline available");
-    ImGui::Spacing();
-    ImGui::TextWrapped("The outline view shows the symbol tree of the currently active editor.");
+    const ViewDefinition* active_view = view_registry.GetActiveView(mode, ViewContainer::SecondarySidebar);
+    if (!active_tab) {
+        ImGui::TextColored(text_color, "SECONDARY SIDEBAR");
+        ImGui::Separator();
+        ImGui::Spacing();
+        ImGui::TextWrapped("No editor open. Select an editor to show its outline and properties.");
+    } else if (!active_view || !active_view->renderer) {
+        ImGui::TextColored(text_color, "NO VIEW");
+        ImGui::Separator();
+        ImGui::Text("No secondary sidebar view for this editor.");
+    } else {
+        ImVec2 content_min = ImGui::GetCursorScreenPos();
+        ImVec2 content_max = ImVec2(content_min.x + ImGui::GetContentRegionAvail().x,
+                                    content_min.y + ImGui::GetContentRegionAvail().y);
+        active_view->renderer(content_min, content_max, active_tab);
+    }
 
     ImGui::End();
     ImGui::PopStyleVar(3);

@@ -165,14 +165,19 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
     float dropdown_w = sizes.title_dropdown_w;
     const char* menu_names[] = { "File", "Edit", "View", "Help" };
     const int menu_count = 4;
-    static int active_menu = -1;
+    int active_menu = (int)service.GetActiveMenu() - 1;
+        bool menu_click_handled = false;
     for (int i = 0; i < menu_count; i++) {
         ImVec2 btn_pos = ImVec2(window_pos.x + menu_x + i * menu_btn_w, window_pos.y);
         ImVec2 btn_size = ImVec2(menu_btn_w, title_h);
         ImVec2 btn_max = ImVec2(btn_pos.x + btn_size.x, btn_pos.y + btn_size.y);
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool is_hovered = (mouse_pos.x >= btn_pos.x && mouse_pos.x <= btn_max.x && mouse_pos.y >= btn_pos.y && mouse_pos.y <= btn_max.y);
-        if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) active_menu = (active_menu == i) ? -1 : i;
+            if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            active_menu = (active_menu == i) ? -1 : i;
+            service.SetActiveMenu(active_menu >= 0 ? (TitleBarMenu)(active_menu + 1) : TitleBarMenu::None);
+                menu_click_handled = true;
+        }
         ImU32 btn_bg = (is_hovered || active_menu == i) ? ImGui::GetColorU32(menu_hover) : ImGui::GetColorU32(bg_color);
         draw_list->AddRectFilled(btn_pos, btn_max, btn_bg);
         ImVec2 text_pos = ImVec2(btn_pos.x + sizes.title_menu_text_padding_x, btn_pos.y + (title_h - ImGui::GetTextLineHeight()) * 0.5f);
@@ -221,6 +226,7 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
                 // 菜单点击事件
                 if (item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !has_submenu[j]) {
                     active_menu = -1;
+                    service.SetActiveMenu(TitleBarMenu::None);
                     if (i == 0) {
                         if (j == 1) service.TriggerCommand(CommandId::FileOpen);
                         else if (j == 2) service.TriggerCommand(CommandId::FileSave);
@@ -234,6 +240,7 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
                     } else if (i == 3) {
                         if (j == 0) service.TriggerCommand(CommandId::HelpAbout);
                     }
+                        menu_click_handled = true;
                 }
             }
             hovered_submenu_item = current_hovered_item;
@@ -266,18 +273,25 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
                             if (k == 0) service.TriggerCommand(CommandId::FileNew2D);
                             else if (k == 1) service.TriggerCommand(CommandId::FileNew3D);
                             else if (k == 2) service.TriggerCommand(CommandId::FileNewNodeGraph);
+                            service.SetActiveMenu(TitleBarMenu::None);
+                            menu_click_handled = true;
                         }
                     }
                 }
             }
         }
     }
-    if (active_menu >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        if (menu_click_handled) {
+            service.RequestBlockTabClicksOnce();
+        }
+        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !menu_click_handled) {
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool in_menu_buttons = (mouse_pos.x >= window_pos.x + menu_x && mouse_pos.x <= window_pos.x + menu_x + menu_count * menu_btn_w && mouse_pos.y >= window_pos.y && mouse_pos.y <= window_pos.y + title_h);
         ImVec2 dropdown_btn_pos = ImVec2(window_pos.x + menu_x + active_menu * menu_btn_w, window_pos.y + title_h);
         bool in_dropdown = (mouse_pos.x >= dropdown_btn_pos.x && mouse_pos.x <= dropdown_btn_pos.x + dropdown_w && mouse_pos.y >= dropdown_btn_pos.y && mouse_pos.y <= dropdown_btn_pos.y + 200);
         if (!in_menu_buttons && !in_dropdown) active_menu = -1;
+            active_menu = -1;
+            service.SetActiveMenu(TitleBarMenu::None);
     }
 
     // === Right side: Layout buttons + Control buttons ===

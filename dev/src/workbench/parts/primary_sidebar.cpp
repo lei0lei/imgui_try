@@ -6,13 +6,16 @@ PrimarySidebarPart::PrimarySidebarPart(PrimarySidebarService& service)
 }
 
  PrimarySidebarResult PrimarySidebarPart::Render(
-	 ActivityBarItem active_item,
 	 float activity_bar_w,
 	 float title_h,
 	 float status_bar_h,
-	 float width)
+	 float width,
+	 ViewRegistry& view_registry,
+	 SceneType mode,
+	 EditorTab* active_tab,
+	 ActivityBarItem active_item)
  {
-	 return DrawPrimarySidebarUI(active_item, activity_bar_w, title_h, status_bar_h, width, service_);
+	 return DrawPrimarySidebarUI(activity_bar_w, title_h, status_bar_h, width, service_, view_registry, mode, active_tab, active_item);
  }
 
  PrimarySidebarService& PrimarySidebarPart::GetService()

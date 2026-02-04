@@ -38,10 +38,14 @@ public:
     void TriggerCommand(CommandId cmd);
     CommandId ConsumeLastCommand(); // 取出并清空最近命令
 
+    void RequestBlockTabClicksOnce();
+    bool ConsumeBlockTabClicksOnce();
+
     // 窗口控制/布局命令转交给 CommandService
     // 获取当前状态
     const TitleBarState& GetState() const;
 
 private:
     TitleBarState state_;
+    bool block_tab_clicks_once_ = false;
 };

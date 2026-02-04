@@ -98,6 +98,8 @@ struct WorkbenchThemeColors {
     ImVec4 editor_node_grid_major;
     ImVec4 editor_node_axis;
     ImVec4 editor_node_overlay_bg;
+    ImVec4 editor_node_overlay_hover;
+    ImVec4 editor_node_overlay_active;
     ImVec4 editor_node_overlay_text;
 };
 
@@ -187,6 +189,7 @@ struct WorkbenchThemeSizes {
     float editor_node_axis_thickness;
     float editor_node_grid_draw_min;
     float editor_node_grid_draw_max;
+    float editor_node_grid_minor_threshold;
     float editor_node_zoom_min;
     float editor_node_zoom_max;
     float editor_node_zoom_step;

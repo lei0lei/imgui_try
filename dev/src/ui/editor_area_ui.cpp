@@ -40,7 +40,8 @@ static void DrawWelcomeScreen(ImVec2 area_min, ImVec2 area_max)
 // 绘制标签栏
 static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max, 
                        std::vector<EditorTab>& tabs, 
-                       int& closed_tab, int& active_tab)
+                       int& closed_tab, int& active_tab,
+                       bool block_tab_clicks)
 {
     const WorkbenchTheme& theme = GetWorkbenchTheme();
     const WorkbenchThemeColors& colors = theme.colors;
@@ -136,7 +137,7 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
                   ImVec2(close_center.x + x_size, close_center.y - x_size), x_color, sizes.title_button_icon_stroke);
         
         // 处理点击事件
-        if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        if (!block_tab_clicks && is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             if (close_hovered) {
                 // 点击关闭按钮
                 closed_tab = (int)i;
@@ -181,7 +182,8 @@ void EditorArea::Draw(
     float title_h,
     float status_bar_h,
     float panel_h,
-    bool panel_visible)
+    bool panel_visible,
+    bool block_tab_clicks)
 {
     ImGuiIO& io = ImGui::GetIO();
     
@@ -209,6 +211,11 @@ void EditorArea::Draw(
     auto& tabs = service_.GetTabs();
     
     if (tabs.empty()) {
+        const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
+        ImDrawList* bg = ImGui::GetBackgroundDrawList();
+        ImVec2 full_max = ImVec2(io.DisplaySize.x, area_max.y);
+        bg->AddRectFilled(area_min, full_max, ImGui::GetColorU32(colors.editor_welcome_bg));
+        area_max.x = io.DisplaySize.x;
         // 没有打开的文件 - 显示欢迎界面
         DrawWelcomeScreen(area_min, area_max);
     } else {
@@ -222,7 +229,7 @@ void EditorArea::Draw(
         // 处理标签栏交互
         int closed_tab = -1;
         int active_tab = -1;
-        DrawTabBar(tab_bar_min, tab_bar_max, tabs, closed_tab, active_tab);
+        DrawTabBar(tab_bar_min, tab_bar_max, tabs, closed_tab, active_tab, block_tab_clicks);
         
         // 处理用户操作（通过 service）
         if (closed_tab >= 0) {
@@ -251,6 +258,11 @@ void EditorArea::Draw(
             DrawEditorContent(content_min, content_max, active_tab_ptr, scene_registry_);
         } else {
             // 关闭最后一个tab后，绘制欢迎界面
+            const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
+            ImDrawList* bg = ImGui::GetBackgroundDrawList();
+            ImVec2 full_max = ImVec2(io.DisplaySize.x, area_max.y);
+            bg->AddRectFilled(area_min, full_max, ImGui::GetColorU32(colors.editor_welcome_bg));
+            area_max.x = io.DisplaySize.x;
             DrawWelcomeScreen(area_min, area_max);
         }
     }

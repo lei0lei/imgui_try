@@ -6,6 +6,7 @@ TitleBarService::TitleBarService() {
 
 void TitleBarService::Reset() {
     state_ = TitleBarState();
+    block_tab_clicks_once_ = false;
 }
 
 void TitleBarService::SetActiveMenu(TitleBarMenu menu) {
@@ -24,6 +25,16 @@ CommandId TitleBarService::ConsumeLastCommand() {
     CommandId cmd = state_.last_command;
     state_.last_command = CommandId::None;
     return cmd;
+}
+
+void TitleBarService::RequestBlockTabClicksOnce() {
+    block_tab_clicks_once_ = true;
+}
+
+bool TitleBarService::ConsumeBlockTabClicksOnce() {
+    bool value = block_tab_clicks_once_;
+    block_tab_clicks_once_ = false;
+    return value;
 }
 
 const TitleBarState& TitleBarService::GetState() const {

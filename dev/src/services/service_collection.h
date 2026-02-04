@@ -8,6 +8,7 @@
 #include "title_bar_service.h"
 #include "notification_service.h"
 #include "layout_service.h"
+#include "view_registry.h"
 
 class ServiceCollection {
 public:
@@ -35,6 +36,9 @@ public:
 	LayoutService& GetLayoutService() { return layout_service_; }
 	const LayoutService& GetLayoutService() const { return layout_service_; }
 
+	ViewRegistry& GetViewRegistry() { return view_registry_; }
+	const ViewRegistry& GetViewRegistry() const { return view_registry_; }
+
 private:
 	ActivityBarService activity_bar_service_;
 	PrimarySidebarService primary_sidebar_service_;
@@ -44,4 +48,5 @@ private:
 	TitleBarService title_bar_service_;
 	NotificationService notification_service_;
 	LayoutService layout_service_;
+	ViewRegistry view_registry_;
 };

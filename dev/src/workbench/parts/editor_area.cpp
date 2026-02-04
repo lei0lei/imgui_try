@@ -12,9 +12,10 @@ EditorAreaPart::EditorAreaPart(EditorAreaService& service)
 	 float title_h,
 	 float status_bar_h,
 	 float panel_h,
-	 bool panel_visible)
+	 bool panel_visible,
+	 bool block_tab_clicks)
  {
-	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible);
+	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks);
  }
 
  EditorAreaService& EditorAreaPart::GetService()

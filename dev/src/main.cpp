@@ -539,11 +539,7 @@ int main(int, char**)
         workbench.RenderEditorArea(metrics, layout);
 
 
-        // Bottom panel (terminal, output, etc.)
-        workbench.RenderPanel(metrics, layout);
-        
-        // Secondary sidebar
-        workbench.RenderSecondarySidebar(metrics, layout);
+        workbench.RenderPanelAndSecondary(metrics, layout);
         
 
 

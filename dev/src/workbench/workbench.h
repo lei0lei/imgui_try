@@ -14,6 +14,7 @@
 #include "../services/service_collection.h"
 #include "workbench_config.h"
 #include "layout/layout_manager.h"
+#include "../ui/view_registry_defaults.h"
 
 class Workbench {
 public:
@@ -27,6 +28,7 @@ public:
     void RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
     void RenderPanel(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
     void RenderSecondarySidebar(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
+    void RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before);
     LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics) const;
     void RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w);
     void RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w);
@@ -76,7 +78,7 @@ public:
     const EditorAreaService& GetEditorAreaService() const { return services_.GetEditorAreaService(); }
 
     // 渲染编辑器区域
-    void RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible);
+    void RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible, bool block_tab_clicks);
 private:
     void RegisterCommands();
     SDL_Window* window_;
@@ -94,4 +96,6 @@ private:
     EditorAreaPart editor_area_part_;
     WorkbenchConfig config_;
     LayoutManager layout_manager_;
+    bool allow_panel_without_editor_ = false;
+    bool allow_secondary_without_editor_ = false;
 };

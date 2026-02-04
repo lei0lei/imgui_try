@@ -100,6 +100,8 @@ WorkbenchTheme MakeDefaultTheme()
     theme.colors.editor_node_grid_major = ImVec4(0.26f, 0.26f, 0.30f, 1.0f);
     theme.colors.editor_node_axis = ImVec4(0.35f, 0.35f, 0.42f, 1.0f);
     theme.colors.editor_node_overlay_bg = ImVec4(0.20f, 0.20f, 0.24f, 0.95f);
+    theme.colors.editor_node_overlay_hover = ImVec4(0.30f, 0.30f, 0.36f, 0.98f);
+    theme.colors.editor_node_overlay_active = ImVec4(0.38f, 0.38f, 0.45f, 1.0f);
     theme.colors.editor_node_overlay_text = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
     theme.sizes.activity_bar_padding_y = 8.0f;
@@ -187,6 +189,7 @@ WorkbenchTheme MakeDefaultTheme()
     theme.sizes.editor_node_axis_thickness = 2.0f;
     theme.sizes.editor_node_grid_draw_min = 12.0f;
     theme.sizes.editor_node_grid_draw_max = 72.0f;
+    theme.sizes.editor_node_grid_minor_threshold = 1.25f;
     theme.sizes.editor_node_zoom_min = 0.2f;
     theme.sizes.editor_node_zoom_max = 2.5f;
     theme.sizes.editor_node_zoom_step = 0.1f;
@@ -389,6 +392,8 @@ bool WorkbenchConfig::LoadFromFile(const char* path)
         {"editor_node_grid_major", &theme.colors.editor_node_grid_major},
         {"editor_node_axis", &theme.colors.editor_node_axis},
         {"editor_node_overlay_bg", &theme.colors.editor_node_overlay_bg},
+        {"editor_node_overlay_hover", &theme.colors.editor_node_overlay_hover},
+        {"editor_node_overlay_active", &theme.colors.editor_node_overlay_active},
         {"editor_node_overlay_text", &theme.colors.editor_node_overlay_text},
     };
 
@@ -485,6 +490,7 @@ bool WorkbenchConfig::LoadFromFile(const char* path)
         {"editor_node_axis_thickness", &theme.sizes.editor_node_axis_thickness},
         {"editor_node_grid_draw_min", &theme.sizes.editor_node_grid_draw_min},
         {"editor_node_grid_draw_max", &theme.sizes.editor_node_grid_draw_max},
+        {"editor_node_grid_minor_threshold", &theme.sizes.editor_node_grid_minor_threshold},
         {"editor_node_zoom_min", &theme.sizes.editor_node_zoom_min},
         {"editor_node_zoom_max", &theme.sizes.editor_node_zoom_max},
         {"editor_node_zoom_step", &theme.sizes.editor_node_zoom_step},

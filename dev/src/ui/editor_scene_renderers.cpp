@@ -208,10 +208,16 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
     ImVec2 canvas_size = ImVec2(content_max.x - content_min.x, content_max.y - content_min.y);
     draw_list->AddRectFilled(content_min, content_max, ImGui::GetColorU32(colors.editor_node_bg));
 
+    ImGui::SetCursorScreenPos(content_min);
+    ImGui::SetNextItemAllowOverlap();
+    ImGui::InvisibleButton("node_canvas", canvas_size,
+        ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+
     ImGuiIO& io = ImGui::GetIO();
     ImVec2 mouse_pos = io.MousePos;
     bool in_canvas = (mouse_pos.x >= content_min.x && mouse_pos.x <= content_max.x &&
                       mouse_pos.y >= content_min.y && mouse_pos.y <= content_max.y);
+    bool canvas_hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
 
     const float overlay_padding = sizes.editor_node_overlay_padding;
     const ImVec2 button_size = ImVec2(34.0f, 30.0f);
@@ -224,66 +230,71 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
     bool over_overlay = (mouse_pos.x >= stack_pos.x && mouse_pos.x <= stack_max.x &&
                          mouse_pos.y >= stack_pos.y && mouse_pos.y <= stack_max.y);
 
-    float local_x = 0.0f;
-    float local_y = 0.0f;
-    SDL_MouseButtonFlags buttons = SDL_GetMouseState(&local_x, &local_y);
-    const bool* keys = SDL_GetKeyboardState(nullptr);
-    bool space_down = keys[SDL_SCANCODE_SPACE] != 0 || ImGui::IsKeyDown(ImGuiKey_Space);
-    bool left_down = (buttons & SDL_BUTTON_LMASK) != 0;
-    bool middle_down = (buttons & SDL_BUTTON_MMASK) != 0;
-    bool right_down = (buttons & SDL_BUTTON_RMASK) != 0;
+    bool space_down = ImGui::IsKeyDown(ImGuiKey_Space);
+    bool left_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+    bool middle_down = ImGui::IsMouseDown(ImGuiMouseButton_Middle);
+    bool right_down = ImGui::IsMouseDown(ImGuiMouseButton_Right);
 
-    static int drag_mode = 0; // 0: none, 1: left+space, 2: middle, 3: right
-    static ImVec2 last_mouse_pos = ImVec2(0.0f, 0.0f);
-
-    bool started_drag = false;
-    if (drag_mode == 0) {
-        if (in_canvas && !over_overlay && middle_down) {
-            drag_mode = 2;
-            started_drag = true;
-        } else if (in_canvas && !over_overlay && right_down) {
-            drag_mode = 3;
-            started_drag = true;
-        } else if (in_canvas && !over_overlay && left_down && space_down) {
-            drag_mode = 1;
-            started_drag = true;
-        }
-    }
-
-    if (drag_mode == 1 && !left_down) drag_mode = 0;
-    if (drag_mode == 2 && !middle_down) drag_mode = 0;
-    if (drag_mode == 3 && !right_down) drag_mode = 0;
-
-    float global_x = 0.0f;
-    float global_y = 0.0f;
-    SDL_GetGlobalMouseState(&global_x, &global_y);
-
-    if (drag_mode != 0) {
-        ImVec2 drag_pos = ImVec2(global_x, global_y);
-        if (started_drag) {
-            last_mouse_pos = drag_pos;
-        }
-        ImVec2 delta = ImVec2(drag_pos.x - last_mouse_pos.x, drag_pos.y - last_mouse_pos.y);
-        tab.node_canvas_pan.x += delta.x;
-        tab.node_canvas_pan.y += delta.y;
-        last_mouse_pos = drag_pos;
-    }
-
-    if (in_canvas && io.MouseWheel != 0.0f) {
-        float wheel = std::clamp(io.MouseWheel, -3.0f, 3.0f);
+    auto apply_zoom = [&](float zoom_scale, ImVec2 pivot) {
         float old_zoom = tab.node_canvas_zoom;
-        float zoom = old_zoom * (1.0f + wheel * sizes.editor_node_zoom_step);
-        zoom = std::clamp(zoom, sizes.editor_node_zoom_min, sizes.editor_node_zoom_max);
-
-        if (zoom != old_zoom) {
-            ImVec2 mouse = io.MousePos;
-            ImVec2 before = ImVec2((mouse.x - content_min.x - tab.node_canvas_pan.x) / old_zoom,
-                                   (mouse.y - content_min.y - tab.node_canvas_pan.y) / old_zoom);
-            tab.node_canvas_zoom = zoom;
-            ImVec2 after = ImVec2(before.x * zoom, before.y * zoom);
-            tab.node_canvas_pan.x += (mouse.x - content_min.x) - after.x;
-            tab.node_canvas_pan.y += (mouse.y - content_min.y) - after.y;
+        float new_zoom = std::clamp(old_zoom * zoom_scale, sizes.editor_node_zoom_min, sizes.editor_node_zoom_max);
+        if (new_zoom == old_zoom) {
+            return;
         }
+        ImVec2 pivot_to_canvas = ImVec2((pivot.x - content_min.x) / old_zoom - tab.node_canvas_pan.x,
+                                        (pivot.y - content_min.y) / old_zoom - tab.node_canvas_pan.y);
+        tab.node_canvas_zoom = new_zoom;
+        tab.node_canvas_pan.x = (pivot.x - content_min.x) / new_zoom - pivot_to_canvas.x;
+        tab.node_canvas_pan.y = (pivot.y - content_min.y) / new_zoom - pivot_to_canvas.y;
+    };
+
+    bool allow_input = in_canvas && canvas_hovered && !over_overlay;
+    bool drag_enabled = allow_input && (middle_down || right_down || (left_down && space_down));
+    if (drag_enabled) {
+        float inv_zoom = (tab.node_canvas_zoom > 0.0f) ? (1.0f / tab.node_canvas_zoom) : 1.0f;
+        tab.node_canvas_pan.x += io.MouseDelta.x * inv_zoom;
+        tab.node_canvas_pan.y += io.MouseDelta.y * inv_zoom;
+    }
+
+    if (allow_input && io.MouseWheel != 0.0f) {
+        float wheel = std::clamp(io.MouseWheel, -3.0f, 3.0f);
+        apply_zoom(1.0f + wheel * sizes.editor_node_zoom_step, io.MousePos);
+    }
+
+    auto screen_to_canvas = [&](ImVec2 screen_pos) {
+        return ImVec2((screen_pos.x - content_min.x) / tab.node_canvas_zoom - tab.node_canvas_pan.x,
+                      (screen_pos.y - content_min.y) / tab.node_canvas_zoom - tab.node_canvas_pan.y);
+    };
+    auto canvas_to_screen = [&](ImVec2 canvas_pos) {
+        return ImVec2(content_min.x + (canvas_pos.x + tab.node_canvas_pan.x) * tab.node_canvas_zoom,
+                      content_min.y + (canvas_pos.y + tab.node_canvas_pan.y) * tab.node_canvas_zoom);
+    };
+
+    if (allow_input && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        ImGui::OpenPopup("node_canvas_context");
+    }
+
+    bool request_add_node = false;
+    ImVec2 request_node_pos = ImVec2(0.0f, 0.0f);
+    if (allow_input && ImGui::IsKeyPressed(ImGuiKey_N)) {
+        request_add_node = true;
+        request_node_pos = screen_to_canvas(io.MousePos);
+    }
+
+    if (ImGui::BeginPopup("node_canvas_context")) {
+        if (ImGui::MenuItem("Add Node")) {
+            request_add_node = true;
+            request_node_pos = screen_to_canvas(io.MousePos);
+        }
+        ImGui::EndPopup();
+    }
+
+    if (request_add_node) {
+        EditorTab::Node node;
+        node.id = tab.node_next_id++;
+        node.title = "Node " + std::to_string(node.id);
+        node.pos = request_node_pos;
+        tab.nodes.push_back(node);
     }
 
     if (!std::isfinite(tab.node_canvas_pan.x) || !std::isfinite(tab.node_canvas_pan.y) ||
@@ -292,10 +303,12 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
         tab.node_canvas_zoom = 1.0f;
     }
 
+    ImVec2 grid_pan = ImVec2(tab.node_canvas_pan.x * tab.node_canvas_zoom,
+                             tab.node_canvas_pan.y * tab.node_canvas_zoom);
     const float pan_wrap = sizes.editor_node_grid_size * 1024.0f;
     if (pan_wrap > 0.0f) {
-        tab.node_canvas_pan.x = std::fmod(tab.node_canvas_pan.x, pan_wrap);
-        tab.node_canvas_pan.y = std::fmod(tab.node_canvas_pan.y, pan_wrap);
+        grid_pan.x = std::fmod(grid_pan.x, pan_wrap);
+        grid_pan.y = std::fmod(grid_pan.y, pan_wrap);
     }
 
     draw_list->PushClipRect(content_min, content_max, true);
@@ -321,33 +334,47 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
     ImU32 minor_col = ImGui::GetColorU32(colors.editor_node_grid_minor);
     ImU32 major_col = ImGui::GetColorU32(colors.editor_node_grid_major);
 
-    {
-        float start_x = grid_start(content_min.x, tab.node_canvas_pan.x, draw_grid_size);
+    bool draw_minor = draw_grid_size >= (grid_draw_min * sizes.editor_node_grid_minor_threshold);
+    if (draw_minor) {
+        float start_x = grid_start(content_min.x, grid_pan.x, draw_grid_size);
         for (float x = start_x; x <= content_max.x; x += draw_grid_size) {
             draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), minor_col, sizes.editor_node_grid_thickness);
         }
-        float start_y = grid_start(content_min.y, tab.node_canvas_pan.y, draw_grid_size);
+        float start_y = grid_start(content_min.y, grid_pan.y, draw_grid_size);
         for (float y = start_y; y <= content_max.y; y += draw_grid_size) {
             draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), minor_col, sizes.editor_node_grid_thickness);
         }
     }
 
     {
-        float start_x = grid_start(content_min.x, tab.node_canvas_pan.x, draw_major_grid_size);
+        float start_x = grid_start(content_min.x, grid_pan.x, draw_major_grid_size);
         for (float x = start_x; x <= content_max.x; x += draw_major_grid_size) {
             draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), major_col, sizes.editor_node_grid_major_thickness);
         }
-        float start_y = grid_start(content_min.y, tab.node_canvas_pan.y, draw_major_grid_size);
+        float start_y = grid_start(content_min.y, grid_pan.y, draw_major_grid_size);
         for (float y = start_y; y <= content_max.y; y += draw_major_grid_size) {
             draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), major_col, sizes.editor_node_grid_major_thickness);
         }
     }
 
+    ImU32 node_bg = ImGui::GetColorU32(colors.editor_node_overlay_bg);
+    ImU32 node_border = ImGui::GetColorU32(colors.editor_node_grid_major);
+    ImU32 node_text = ImGui::GetColorU32(colors.editor_node_overlay_text);
+    const float title_pad = 6.0f;
+    for (const auto& node : tab.nodes) {
+        ImVec2 node_pos = canvas_to_screen(node.pos);
+        ImVec2 node_size = ImVec2(node.size.x * tab.node_canvas_zoom, node.size.y * tab.node_canvas_zoom);
+        ImVec2 node_max = ImVec2(node_pos.x + node_size.x, node_pos.y + node_size.y);
+        draw_list->AddRectFilled(node_pos, node_max, node_bg, sizes.editor_node_overlay_rounding);
+        draw_list->AddRect(node_pos, node_max, node_border, sizes.editor_node_overlay_rounding, 0, 1.0f);
+        draw_list->AddText(ImVec2(node_pos.x + title_pad, node_pos.y + title_pad), node_text, node.title.c_str());
+    }
+
     draw_list->PopClipRect();
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, sizes.editor_node_overlay_rounding);
     ImGui::PushStyleColor(ImGuiCol_Button, colors.editor_node_overlay_bg);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.editor_node_overlay_bg);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.editor_node_overlay_bg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.editor_node_overlay_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.editor_node_overlay_active);
     ImGui::PushStyleColor(ImGuiCol_Text, colors.editor_node_overlay_text);
 
     ImDrawList* overlay_draw = ImGui::GetWindowDrawList();
@@ -380,23 +407,11 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
         bool pressed = ImGui::Button(id, button_size);
         ImVec2 p0 = ImGui::GetItemRectMin();
         ImVec2 p1 = ImGui::GetItemRectMax();
-        overlay_draw->AddRectFilled(p0, p1, ImGui::GetColorU32(overlay_bg), sizes.editor_node_overlay_rounding);
+        ImU32 bg_col = ImGui::GetColorU32(ImGui::IsItemActive() ? colors.editor_node_overlay_active
+            : (ImGui::IsItemHovered() ? colors.editor_node_overlay_hover : overlay_bg));
+        overlay_draw->AddRectFilled(p0, p1, bg_col, sizes.editor_node_overlay_rounding);
         draw_icon(p0, p1);
         return pressed;
-    };
-
-    auto apply_zoom = [&](float zoom_scale, ImVec2 pivot) {
-        float old_zoom = tab.node_canvas_zoom;
-        float new_zoom = std::clamp(old_zoom * zoom_scale, sizes.editor_node_zoom_min, sizes.editor_node_zoom_max);
-        if (new_zoom == old_zoom) {
-            return;
-        }
-        ImVec2 before = ImVec2((pivot.x - content_min.x - tab.node_canvas_pan.x) / old_zoom,
-                               (pivot.y - content_min.y - tab.node_canvas_pan.y) / old_zoom);
-        tab.node_canvas_zoom = new_zoom;
-        ImVec2 after = ImVec2(before.x * new_zoom, before.y * new_zoom);
-        tab.node_canvas_pan.x += (pivot.x - content_min.x) - after.x;
-        tab.node_canvas_pan.y += (pivot.y - content_min.y) - after.y;
     };
 
     ImVec2 zoom_pivot = ImVec2((content_min.x + content_max.x) * 0.5f, (content_min.y + content_max.y) * 0.5f);
@@ -419,12 +434,12 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
     ImVec2 percent_max = ImVec2(button_pos.x + button_size.x, button_pos.y + button_size.y);
     overlay_draw->AddRectFilled(percent_pos, percent_max, ImGui::GetColorU32(overlay_bg), sizes.editor_node_overlay_rounding);
     const float zoom_percent = tab.node_canvas_zoom * 100.0f;
-    ImVec2 percent_text_size = ImGui::CalcTextSize("100");
+    std::string percent_text = std::to_string((int)zoom_percent);
+    ImVec2 percent_text_size = ImGui::CalcTextSize(percent_text.c_str());
     ImVec2 percent_text_pos = ImVec2(
         percent_pos.x + (button_size.x - percent_text_size.x) * 0.5f,
         percent_pos.y + (button_size.y - percent_text_size.y) * 0.5f
     );
-    std::string percent_text = std::to_string((int)zoom_percent);
     overlay_draw->AddText(percent_text_pos, ImGui::GetColorU32(colors.editor_node_overlay_text), percent_text.c_str());
 
     ImGui::PopStyleColor(4);
