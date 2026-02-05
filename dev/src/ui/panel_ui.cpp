@@ -6,12 +6,9 @@ PanelResult DrawPanelUI(float left_offset,
                         float right_offset,
                         float status_bar_h,
                         float panel_h,
-                        PanelService& panel_service,
-                        ViewRegistry& view_registry,
-                        SceneType mode,
+                        const PanelViewModel& view_model,
                         EditorTab* active_tab) {
     PanelResult result{};
-    (void)panel_service;
     ImGuiIO& io = ImGui::GetIO();
 
     // VS Code panel colors
@@ -51,13 +48,13 @@ PanelResult DrawPanelUI(float left_offset,
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 window_pos = ImGui::GetWindowPos();
 
-    const auto& views = view_registry.GetViews(mode, ViewContainer::Panel);
+    const std::vector<ViewDefinition>* views = view_model.views;
     float tab_height = sizes.panel_tab_height;
     float tab_width = sizes.panel_tab_width;
 
-    if (!views.empty()) {
-        int active_index = view_registry.GetActiveViewIndex(mode, ViewContainer::Panel);
-        for (int i = 0; i < static_cast<int>(views.size()); ++i)
+    if (views && !views->empty()) {
+        int active_index = view_model.active_index;
+        for (int i = 0; i < static_cast<int>(views->size()); ++i)
         {
             ImVec2 tab_min = ImVec2(window_pos.x + i * tab_width, window_pos.y);
             ImVec2 tab_max = ImVec2(tab_min.x + tab_width, tab_min.y + tab_height);
@@ -73,10 +70,10 @@ PanelResult DrawPanelUI(float left_offset,
             }
             draw_list->AddRectFilled(tab_min, tab_max, tab_color);
 
-            ImVec2 text_size = ImGui::CalcTextSize(views[i].title.c_str());
+            ImVec2 text_size = ImGui::CalcTextSize((*views)[i].title.c_str());
             ImVec2 text_pos = ImVec2(tab_min.x + (tab_width - text_size.x) * 0.5f,
                                     tab_min.y + (tab_height - text_size.y) * 0.5f);
-            draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), views[i].title.c_str());
+            draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), (*views)[i].title.c_str());
 
             if (is_active)
             {
@@ -87,7 +84,8 @@ PanelResult DrawPanelUI(float left_offset,
 
             if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
             {
-                view_registry.SetActiveViewIndex(mode, ViewContainer::Panel, i);
+                if (view_model.on_select_tab)
+                    view_model.on_select_tab(i);
                 active_index = i;
             }
         }
@@ -97,7 +95,7 @@ PanelResult DrawPanelUI(float left_offset,
         if (!active_tab) {
             ImGui::Text("No editor open. Panel is idle.");
         } else {
-            const ViewDefinition* active_view = view_registry.GetActiveView(mode, ViewContainer::Panel);
+            const ViewDefinition* active_view = view_model.active_view;
             if (active_view && active_view->renderer) {
                 ImVec2 content_min = ImGui::GetCursorScreenPos();
                 ImVec2 content_max = ImVec2(content_min.x + ImGui::GetContentRegionAvail().x,

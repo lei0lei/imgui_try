@@ -1,5 +1,6 @@
 #include "file_commands.h"
 #include "imgui.h"
+#include "../services/editor_area_service.h"
 
 void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
 {

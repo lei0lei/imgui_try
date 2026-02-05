@@ -1,8 +1,8 @@
  #include "editor_area.h"
 
-EditorAreaPart::EditorAreaPart(EditorAreaService& service)
+EditorAreaPart::EditorAreaPart(IEditorAreaService& service)
 	: service_(service),
-	  ui_(std::make_unique<UI::EditorArea>(service_))
+	  ui_(std::make_unique<UI::EditorArea>())
  {
  }
 
@@ -15,15 +15,20 @@ EditorAreaPart::EditorAreaPart(EditorAreaService& service)
 	 bool panel_visible,
 	 bool block_tab_clicks)
  {
-	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks);
+	 UI::EditorArea::ViewModel vm{};
+	 vm.get_tabs = [this]() -> const std::vector<EditorTab>& { return service_.GetTabs(); };
+	 vm.get_active_tab = [this]() -> EditorTab* { return service_.GetActiveTab(); };
+	 vm.close_tab = [this](int index) { service_.CloseTab(index); };
+	 vm.activate_tab = [this](int index) { service_.ActivateTab(index); };
+	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks, vm);
  }
 
- EditorAreaService& EditorAreaPart::GetService()
+ IEditorAreaService& EditorAreaPart::GetService()
  {
 	 return service_;
  }
 
- const EditorAreaService& EditorAreaPart::GetService() const
+ const IEditorAreaService& EditorAreaPart::GetService() const
  {
 	 return service_;
  }

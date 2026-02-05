@@ -12,6 +12,9 @@
 #include "parts/panel.h"
 #include "parts/editor_area.h"
 #include "../services/service_collection.h"
+#include "../services/service_interfaces.h"
+#include "workbench_command_controller.h"
+#include "workbench_renderer.h"
 #include "workbench_config.h"
 #include "layout/layout_manager.h"
 #include "../ui/view_registry_defaults.h"
@@ -49,41 +52,39 @@ public:
     void CloseSecondarySidebar();
 
     // 通知 service 访问
-    NotificationService& GetNotificationService() { return services_.GetNotificationService(); }
+    INotificationService& GetNotificationService() { return services_.GetNotificationService(); }
 
     // 布局 service 访问
-    LayoutService& GetLayoutService() { return services_.GetLayoutService(); }
-    const LayoutService& GetLayoutService() const { return services_.GetLayoutService(); }
+    ILayoutService& GetLayoutService() { return services_.GetLayoutService(); }
+    const ILayoutService& GetLayoutService() const { return services_.GetLayoutService(); }
 
     // 面板 service 访问
-    PanelService& GetPanelService() { return services_.GetPanelService(); }
-    const PanelService& GetPanelService() const { return services_.GetPanelService(); }
+    IPanelService& GetPanelService() { return services_.GetPanelService(); }
+    const IPanelService& GetPanelService() const { return services_.GetPanelService(); }
 
     // ActivityBar service 访问
-    ActivityBarService& GetActivityBarService() { return services_.GetActivityBarService(); }
-    const ActivityBarService& GetActivityBarService() const { return services_.GetActivityBarService(); }
+    IActivityBarService& GetActivityBarService() { return services_.GetActivityBarService(); }
+    const IActivityBarService& GetActivityBarService() const { return services_.GetActivityBarService(); }
 
     // PrimarySidebar service 访问
-    PrimarySidebarService& GetPrimarySidebarService() { return services_.GetPrimarySidebarService(); }
-    const PrimarySidebarService& GetPrimarySidebarService() const { return services_.GetPrimarySidebarService(); }
+    IPrimarySidebarService& GetPrimarySidebarService() { return services_.GetPrimarySidebarService(); }
+    const IPrimarySidebarService& GetPrimarySidebarService() const { return services_.GetPrimarySidebarService(); }
 
     // SecondarySidebar service 访问
-    SecondarySidebarService& GetSecondarySidebarService() { return services_.GetSecondarySidebarService(); }
-    const SecondarySidebarService& GetSecondarySidebarService() const { return services_.GetSecondarySidebarService(); }
+    ISecondarySidebarService& GetSecondarySidebarService() { return services_.GetSecondarySidebarService(); }
+    const ISecondarySidebarService& GetSecondarySidebarService() const { return services_.GetSecondarySidebarService(); }
 
     // 处理窗口和菜单动作
     void HandleWindowAndMenuActions(bool& done, SDL_Window* window);
     // EditorArea service 访问
-    EditorAreaService& GetEditorAreaService() { return services_.GetEditorAreaService(); }
-    const EditorAreaService& GetEditorAreaService() const { return services_.GetEditorAreaService(); }
+    IEditorAreaService& GetEditorAreaService() { return services_.GetEditorAreaService(); }
+    const IEditorAreaService& GetEditorAreaService() const { return services_.GetEditorAreaService(); }
 
     // 渲染编辑器区域
     void RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible, bool block_tab_clicks);
 private:
-    void RegisterCommands();
     SDL_Window* window_;
     CommandService command_service_;
-    bool pending_exit_ = false;
     ServiceCollection services_;
     TitleBarPart title_bar_part_;
     StatusBarPart status_bar_part_;
@@ -91,11 +92,9 @@ private:
     ActivityBarPart activity_bar_part_;
     PrimarySidebarPart primary_sidebar_part_;
     SecondarySidebarPart secondary_sidebar_part_;
-    bool last_sidebar_visible_ = true;
-    ActivityBarItem last_activity_item_ = ActivityBarItem::None;
     EditorAreaPart editor_area_part_;
     WorkbenchConfig config_;
     LayoutManager layout_manager_;
-    bool allow_panel_without_editor_ = false;
-    bool allow_secondary_without_editor_ = false;
+    WorkbenchCommandController command_controller_;
+    WorkbenchRenderer renderer_;
 };

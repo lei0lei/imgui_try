@@ -7,11 +7,8 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
                                           float title_h,
                                           float status_bar_h,
                                           float width,
-                                          PrimarySidebarService& service,
-                                          ViewRegistry& view_registry,
-                                          SceneType mode,
-                                          EditorTab* active_tab,
-                                          ActivityBarItem active_item)
+                                          const PrimarySidebarViewModel& view_model,
+                                          EditorTab* active_tab)
 {
     PrimarySidebarResult result{};
     ImGuiIO& io = ImGui::GetIO();
@@ -35,9 +32,12 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
                               ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
                               ImGuiWindowFlags_NoBringToFrontOnFocus;
     ImGui::Begin("PrimarySidebar", nullptr, flags);
-    const ViewDefinition* active_view = view_registry.GetActiveView(mode, ViewContainer::PrimarySidebar);
-    ViewDefinition fallback = UI::GetDefaultPrimaryView(active_item);
-    const ViewDefinition* view_to_render = (active_view && active_view->renderer) ? active_view : &fallback;
+    const ViewDefinition* view_to_render = nullptr;
+    if (view_model.active_view && view_model.active_view->renderer) {
+        view_to_render = view_model.active_view;
+    } else if (view_model.fallback_view && view_model.fallback_view->renderer) {
+        view_to_render = &(*view_model.fallback_view);
+    }
 
     if (!view_to_render->renderer) {
         ImGui::TextColored(colors.primary_sidebar_text_dim, "NO VIEW");
@@ -53,6 +53,6 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
     ImGui::PopStyleVar(3);
     ImDrawList* _bg = ImGui::GetBackgroundDrawList();
     _bg->AddLine(ImVec2(sidebar_x + width - sizes.sidebar_border_thickness, sidebar_start_y), ImVec2(sidebar_x + width - sizes.sidebar_border_thickness, sidebar_end_y), ImGui::GetColorU32(colors.primary_sidebar_border), sizes.sidebar_border_thickness);
-    result.is_visible = service.IsVisible();
+    result.is_visible = view_model.is_visible;
     return result;
 }

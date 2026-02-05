@@ -1,6 +1,11 @@
 #pragma once
 #include <SDL3/SDL.h>
-#include "../services/notification_service.h"
+#include <string>
 
-// 只负责渲染和交互收集，所有状态通过 NotificationService 管理
-void RenderStatusBarUI(SDL_Window* window, NotificationService& service, float status_bar_h, float title_h);
+struct StatusBarViewModel {
+	std::string message;
+	float progress = -1.0f;
+};
+
+// 只负责渲染和交互收集，不直接依赖 service
+void RenderStatusBarUI(SDL_Window* window, const StatusBarViewModel& view_model, float status_bar_h, float title_h);

@@ -1,21 +1,17 @@
 
 #pragma once
 #include <SDL3/SDL.h>
-#include "../services/activity_bar_service.h"
-
-// 直接定义 ActivityBarItem 和 ActivityBarResult
-enum class ActivityBarItem {
-	None = 0,
-	Explorer,      // 文件资源管理器
-	Search,        // 搜索
-	NodeEditor, // 源代码管理
-	Debug,         // 调试
-	Extensions     // 扩展
-};
+#include <functional>
+#include "../core/workbench_types.h"
 
 struct ActivityBarResult {
 	ActivityBarItem selected_item = ActivityBarItem::None;
 	bool item_clicked = false;
 };
 
-ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, ActivityBarService& service);
+struct ActivityBarViewModel {
+    int selected_index = 0; // 1-based index matching ActivityBarItem enum order
+    std::function<void(int)> on_select;
+};
+
+ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model);

@@ -1,11 +1,11 @@
 #pragma once
 
 #include "../services/view_registry.h"
-#include "activity_bar_ui.h"
+#include "../core/workbench_types.h"
 
 namespace UI {
 
-void RegisterDefaultViews(ViewRegistry& registry);
+void RegisterDefaultViews(IViewRegistry& registry);
 
 ViewDefinition GetDefaultPrimaryView(ActivityBarItem item);
 

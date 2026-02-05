@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include "editor_area_service.h"
+#include "service_interfaces.h"
 
 enum class ViewContainer {
     PrimarySidebar = 0,
@@ -20,14 +21,14 @@ struct ViewDefinition {
     ViewRenderer renderer;
 };
 
-class ViewRegistry {
+class ViewRegistry : public IViewRegistry {
 public:
-    void RegisterView(SceneType mode, ViewContainer container, ViewDefinition view);
-    const std::vector<ViewDefinition>& GetViews(SceneType mode, ViewContainer container) const;
-    int GetActiveViewIndex(SceneType mode, ViewContainer container) const;
-    void SetActiveViewIndex(SceneType mode, ViewContainer container, int index);
-    void SetActiveViewById(SceneType mode, ViewContainer container, const std::string& id);
-    const ViewDefinition* GetActiveView(SceneType mode, ViewContainer container) const;
+    void RegisterView(SceneType mode, ViewContainer container, const ViewDefinition& view) override;
+    const std::vector<ViewDefinition>& GetViews(SceneType mode, ViewContainer container) const override;
+    int GetActiveViewIndex(SceneType mode, ViewContainer container) const override;
+    void SetActiveViewIndex(SceneType mode, ViewContainer container, int index) override;
+    void SetActiveViewById(SceneType mode, ViewContainer container, const std::string& id) override;
+    const ViewDefinition* GetActiveView(SceneType mode, ViewContainer container) const override;
 
 private:
     static int SceneIndex(SceneType type);

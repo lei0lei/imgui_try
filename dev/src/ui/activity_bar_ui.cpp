@@ -2,7 +2,7 @@
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
 
-ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, ActivityBarService& service)
+ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model)
 {
     ActivityBarResult result{};
     ImGuiIO& io = ImGui::GetIO();
@@ -51,7 +51,7 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
     };
     float item_size = width;
     float item_y = window_pos.y + sizes.activity_bar_padding_y;
-    int selected = service.GetSelectedItem();
+    int selected = view_model.selected_index;
     for (int i = 0; i < 5; ++i) {
         ImVec2 item_min = ImVec2(window_pos.x, item_y);
         ImVec2 item_max = ImVec2(window_pos.x + width, item_y + item_size);
@@ -104,7 +104,9 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
                 break;
         }
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            service.SetSelectedItem(i + 1);
+            selected = i + 1;
+            if (view_model.on_select)
+                view_model.on_select(i + 1);
             result.selected_item = items[i].id;
             result.item_clicked = true;
         }
@@ -118,6 +120,6 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
     // 右边框
     ImDrawList* _bg = ImGui::GetBackgroundDrawList();
     _bg->AddLine(ImVec2(width - sizes.activity_bar_border_thickness, bar_start_y), ImVec2(width - sizes.activity_bar_border_thickness, bar_end_y), ImGui::GetColorU32(colors.activity_bar_border), sizes.activity_bar_border_thickness);
-    result.selected_item = (ActivityBarItem)service.GetSelectedItem();
+    result.selected_item = (ActivityBarItem)selected;
     return result;
 }

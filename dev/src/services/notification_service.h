@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "service_interfaces.h"
 
 // Notification state
 struct NotificationState {
@@ -8,13 +9,13 @@ struct NotificationState {
 };
 
 // Notification service for user-facing messages
-class NotificationService {
+class NotificationService : public INotificationService {
 public:
     NotificationService();
-    void SetMessage(const std::string& msg);
+    void SetMessage(const std::string& msg) override;
     void SetProgress(float value); // 0~1
     void Clear();
-    const NotificationState& GetState() const;
+    const NotificationState& GetState() const override;
 private:
     NotificationState state_;
 };

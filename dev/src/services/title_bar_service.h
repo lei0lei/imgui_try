@@ -4,16 +4,8 @@
 #include <vector>
 
 #include "../command/command_ids.h"
-
-
-// 标题栏菜单类型
-enum class TitleBarMenu {
-    None = 0,
-    File,
-    Edit,
-    View,
-    Help
-};
+#include "../core/workbench_types.h"
+#include "service_interfaces.h"
 
 
 // 标题栏状态结构体
@@ -25,21 +17,21 @@ struct TitleBarState {
 };
 
 // 标题栏服务接口，负责状态管理和事件分发
-class TitleBarService {
+class TitleBarService : public ITitleBarService {
 public:
     TitleBarService();
     void Reset();
 
     // 菜单激活/关闭
-    void SetActiveMenu(TitleBarMenu menu);
-    TitleBarMenu GetActiveMenu() const;
+    void SetActiveMenu(TitleBarMenu menu) override;
+    TitleBarMenu GetActiveMenu() const override;
 
     // 处理菜单命令
-    void TriggerCommand(CommandId cmd);
-    CommandId ConsumeLastCommand(); // 取出并清空最近命令
+    void TriggerCommand(CommandId cmd) override;
+    CommandId ConsumeLastCommand() override; // 取出并清空最近命令
 
-    void RequestBlockTabClicksOnce();
-    bool ConsumeBlockTabClicksOnce();
+    void RequestBlockTabClicksOnce() override;
+    bool ConsumeBlockTabClicksOnce() override;
 
     // 窗口控制/布局命令转交给 CommandService
     // 获取当前状态

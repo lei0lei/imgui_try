@@ -31,11 +31,11 @@ int ViewRegistry::ContainerIndex(ViewContainer container)
     }
 }
 
-void ViewRegistry::RegisterView(SceneType mode, ViewContainer container, ViewDefinition view)
+void ViewRegistry::RegisterView(SceneType mode, ViewContainer container, const ViewDefinition& view)
 {
     const int s = SceneIndex(mode);
     const int c = ContainerIndex(container);
-    views_[s][c].push_back(std::move(view));
+    views_[s][c].push_back(view);
     if (active_indices_[s][c] <= 0) {
         active_indices_[s][c] = 0;
     }

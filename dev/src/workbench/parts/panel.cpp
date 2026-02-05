@@ -1,6 +1,6 @@
  #include "panel.h"
 
-PanelPart::PanelPart(PanelService& service)
+PanelPart::PanelPart(IPanelService& service)
 	: service_(service)
 {
 }
@@ -10,19 +10,27 @@ PanelPart::PanelPart(PanelService& service)
 	 float right_offset,
 	 float status_bar_h,
 	 float panel_h,
-	 ViewRegistry& view_registry,
+	 IViewRegistry& view_registry,
 	 SceneType mode,
 	 EditorTab* active_tab)
  {
-	 return DrawPanelUI(left_offset, right_offset, status_bar_h, panel_h, service_, view_registry, mode, active_tab);
+	 PanelViewModel vm{};
+	 vm.views = &view_registry.GetViews(mode, ViewContainer::Panel);
+	 vm.active_index = view_registry.GetActiveViewIndex(mode, ViewContainer::Panel);
+	 vm.on_select_tab = [&view_registry, mode](int index) {
+		 view_registry.SetActiveViewIndex(mode, ViewContainer::Panel, index);
+	 };
+	 vm.active_view = view_registry.GetActiveView(mode, ViewContainer::Panel);
+	 vm.has_active_tab = (active_tab != nullptr);
+	 return DrawPanelUI(left_offset, right_offset, status_bar_h, panel_h, vm, active_tab);
  }
 
- PanelService& PanelPart::GetService()
+ IPanelService& PanelPart::GetService()
  {
 	 return service_;
  }
 
- const PanelService& PanelPart::GetService() const
+ const IPanelService& PanelPart::GetService() const
  {
 	 return service_;
  }

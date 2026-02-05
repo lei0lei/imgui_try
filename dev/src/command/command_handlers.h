@@ -2,18 +2,14 @@
 
 #include <functional>
 #include "command_service.h"
-#include "../services/notification_service.h"
-#include "../services/panel_service.h"
-#include "../services/activity_bar_service.h"
-#include "../services/editor_area_service.h"
-#include "../services/layout_service.h"
+#include "../services/service_interfaces.h"
 
 struct CommandHandlersContext {
-    NotificationService& notification;
-    PanelService& panel;
-    ActivityBarService& activity_bar;
-    EditorAreaService& editor_area;
-    LayoutService& layout;
+    INotificationService& notification;
+    IPanelService& panel;
+    IActivityBarService& activity_bar;
+    IEditorAreaService& editor_area;
+    ILayoutService& layout;
     std::function<void(bool)> set_primary_sidebar_visible;
     std::function<void()> request_exit;
     std::function<void()> window_minimize;

@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include "imgui.h"
+#include "service_interfaces.h"
 
 // 场景类型
 enum class SceneType {
@@ -32,18 +33,18 @@ struct EditorTab {
 };
 
 // 编辑器区域服务，负责标签页和状态管理
-class EditorAreaService {
+class EditorAreaService : public IEditorAreaService {
 public:
     EditorAreaService() = default;
-    const std::vector<EditorTab>& GetTabs() const { return tabs_; }
-    std::vector<EditorTab>& GetTabs() { return tabs_; }
-    int GetActiveTabIndex() const;
-    EditorTab* GetActiveTab();
-    const EditorTab* GetActiveTab() const;
-    SceneType GetActiveSceneType(SceneType fallback = SceneType::Scene3D) const;
-    void AddTab(const EditorTab& tab);
-    void CloseTab(int index);
-    void ActivateTab(int index);
+    const std::vector<EditorTab>& GetTabs() const override { return tabs_; }
+    std::vector<EditorTab>& GetTabs() override { return tabs_; }
+    int GetActiveTabIndex() const override;
+    EditorTab* GetActiveTab() override;
+    const EditorTab* GetActiveTab() const override;
+    SceneType GetActiveSceneType(SceneType fallback = SceneType::Scene3D) const override;
+    void AddTab(const EditorTab& tab) override;
+    void CloseTab(int index) override;
+    void ActivateTab(int index) override;
     void CloseActiveTab();
     void SetTabs(const std::vector<EditorTab>& tabs) { tabs_ = tabs; }
 private:

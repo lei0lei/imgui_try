@@ -39,7 +39,7 @@ static void DrawWelcomeScreen(ImVec2 area_min, ImVec2 area_max)
 
 // 绘制标签栏
 static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max, 
-                       std::vector<EditorTab>& tabs, 
+                       const std::vector<EditorTab>& tabs, 
                        int& closed_tab, int& active_tab,
                        bool block_tab_clicks)
 {
@@ -60,7 +60,7 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
     
     for (size_t i = 0; i < tabs.size(); i++)
     {
-        EditorTab& tab = tabs[i];
+        const EditorTab& tab = tabs[i];
         
         // 计算标签位置
         ImVec2 tab_min = ImVec2(tab_bar_min.x + i * tab_width, tab_bar_min.y);
@@ -170,8 +170,7 @@ static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab*
     }
 }
 
-EditorArea::EditorArea(EditorAreaService& service) 
-    : service_(service) 
+EditorArea::EditorArea() 
 {
     RegisterDefaultEditorSceneRenderers(scene_registry_);
 }
@@ -183,7 +182,8 @@ void EditorArea::Draw(
     float status_bar_h,
     float panel_h,
     bool panel_visible,
-    bool block_tab_clicks)
+    bool block_tab_clicks,
+    const ViewModel& view_model)
 {
     ImGuiIO& io = ImGui::GetIO();
     
@@ -208,9 +208,9 @@ void EditorArea::Draw(
     
     ImGui::Begin("EditorArea", nullptr, flags);
     
-    auto& tabs = service_.GetTabs();
+    const std::vector<EditorTab>* tabs_ptr = view_model.get_tabs ? &view_model.get_tabs() : nullptr;
     
-    if (tabs.empty()) {
+    if (!tabs_ptr || tabs_ptr->empty()) {
         const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
         ImDrawList* bg = ImGui::GetBackgroundDrawList();
         ImVec2 full_max = ImVec2(io.DisplaySize.x, area_max.y);
@@ -229,28 +229,23 @@ void EditorArea::Draw(
         // 处理标签栏交互
         int closed_tab = -1;
         int active_tab = -1;
-        DrawTabBar(tab_bar_min, tab_bar_max, tabs, closed_tab, active_tab, block_tab_clicks);
+        DrawTabBar(tab_bar_min, tab_bar_max, *tabs_ptr, closed_tab, active_tab, block_tab_clicks);
         
         // 处理用户操作（通过 service）
-        if (closed_tab >= 0) {
-            service_.CloseTab(closed_tab);
-            // 重新获取tabs引用，因为CloseTab可能修改了数组
-            tabs = service_.GetTabs();
+        if (closed_tab >= 0 && view_model.close_tab) {
+            view_model.close_tab(closed_tab);
         }
-        if (active_tab >= 0) {
-            service_.ActivateTab(active_tab);
+        if (active_tab >= 0 && view_model.activate_tab) {
+            view_model.activate_tab(active_tab);
         }
+
+        // 重新获取 tabs 指针（可能已更新）
+        tabs_ptr = view_model.get_tabs ? &view_model.get_tabs() : nullptr;
         
         // 只有在还有tabs的情况下才绘制编辑器内容
-        if (!tabs.empty()) {
+        if (tabs_ptr && !tabs_ptr->empty()) {
             // 查找激活的标签
-            EditorTab* active_tab_ptr = nullptr;
-            for (auto& tab : tabs) {
-                if (tab.active) {
-                    active_tab_ptr = &tab;
-                    break;
-                }
-            }
+            EditorTab* active_tab_ptr = view_model.get_active_tab ? view_model.get_active_tab() : nullptr;
             
             // 绘制编辑器内容
             ImVec2 content_min = ImVec2(area_min.x, tab_bar_max.y);

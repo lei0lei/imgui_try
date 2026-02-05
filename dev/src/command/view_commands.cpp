@@ -1,4 +1,5 @@
 #include "view_commands.h"
+#include "../services/panel_service.h"
 
 void RegisterViewCommands(CommandService& service, CommandHandlersContext ctx)
 {

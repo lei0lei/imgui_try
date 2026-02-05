@@ -2,8 +2,7 @@
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
 
-void RenderStatusBarUI(SDL_Window* window, NotificationService& service, float status_bar_h, float title_h) {
-    const NotificationState& state = service.GetState();
+void RenderStatusBarUI(SDL_Window* window, const StatusBarViewModel& view_model, float status_bar_h, float title_h) {
     ImGuiIO& io = ImGui::GetIO();
     const WorkbenchTheme& theme = GetWorkbenchTheme();
     const WorkbenchThemeColors& colors = theme.colors;
@@ -28,12 +27,12 @@ void RenderStatusBarUI(SDL_Window* window, NotificationService& service, float s
     draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), ImGui::GetColorU32(bg_color));
     ImGui::PushStyleColor(ImGuiCol_Text, text_color);
     ImGui::SetCursorPosY((status_bar_h - ImGui::GetTextLineHeight()) * 0.5f);
-    ImGui::TextUnformatted(state.message.c_str());
+    ImGui::TextUnformatted(view_model.message.c_str());
     ImGui::PopStyleColor();
-    if (state.progress >= 0.0f && state.progress <= 1.0f) {
+    if (view_model.progress >= 0.0f && view_model.progress <= 1.0f) {
         ImGui::SameLine();
         ImGui::SetCursorPosX(win_size.x - sizes.status_bar_progress_right_margin);
-        ImGui::ProgressBar(state.progress, ImVec2(sizes.status_bar_progress_w, sizes.status_bar_progress_h));
+        ImGui::ProgressBar(view_model.progress, ImVec2(sizes.status_bar_progress_w, sizes.status_bar_progress_h));
     }
     ImGui::End();
     ImGui::PopStyleVar(3);

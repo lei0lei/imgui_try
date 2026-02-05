@@ -6,13 +6,11 @@ SecondarySidebarResult DrawSecondarySidebarUI(float title_h,
                                               float status_bar_h,
                                               float panel_h,
                                               float width,
-                                              SecondarySidebarService& service,
-                                              ViewRegistry& view_registry,
-                                              SceneType mode,
+                                              const SecondarySidebarViewModel& view_model,
                                               EditorTab* active_tab)
 {
     SecondarySidebarResult result{};
-    if (!service.IsVisible())
+    if (!view_model.is_visible)
         return result;
 
     ImGuiIO& io = ImGui::GetIO();
@@ -67,7 +65,7 @@ SecondarySidebarResult DrawSecondarySidebarUI(float title_h,
             result.request_close = true;
     }
 
-    const ViewDefinition* active_view = view_registry.GetActiveView(mode, ViewContainer::SecondarySidebar);
+    const ViewDefinition* active_view = view_model.active_view;
     if (!active_tab) {
         ImGui::TextColored(text_color, "SECONDARY SIDEBAR");
         ImGui::Separator();

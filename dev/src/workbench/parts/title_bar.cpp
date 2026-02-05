@@ -1,7 +1,7 @@
  #include "title_bar.h"
  #include "../../ui/title_bar_ui.h"
 
-TitleBarPart::TitleBarPart(TitleBarService& service)
+TitleBarPart::TitleBarPart(ITitleBarService& service)
 	: service_(service)
 {
 }
@@ -13,15 +13,23 @@ TitleBarPart::TitleBarPart(TitleBarService& service)
 	 bool panel_visible,
 	 bool secondary_sidebar_visible)
  {
-	 RenderTitleBarUI(window, service_, title_h, primary_sidebar_visible, panel_visible, secondary_sidebar_visible);
+	 TitleBarViewModel vm{};
+	 vm.active_menu = service_.GetActiveMenu();
+	 vm.set_active_menu = [this](TitleBarMenu menu) { service_.SetActiveMenu(menu); };
+	 vm.trigger_command = [this](CommandId cmd) { service_.TriggerCommand(cmd); };
+	 vm.request_block_tab_clicks_once = [this]() { service_.RequestBlockTabClicksOnce(); };
+	 vm.primary_sidebar_visible = primary_sidebar_visible;
+	 vm.panel_visible = panel_visible;
+	 vm.secondary_sidebar_visible = secondary_sidebar_visible;
+	 RenderTitleBarUI(window, vm, title_h);
  }
 
- TitleBarService& TitleBarPart::GetService()
+ ITitleBarService& TitleBarPart::GetService()
  {
 	 return service_;
  }
 
- const TitleBarService& TitleBarPart::GetService() const
+ const ITitleBarService& TitleBarPart::GetService() const
  {
 	 return service_;
  }

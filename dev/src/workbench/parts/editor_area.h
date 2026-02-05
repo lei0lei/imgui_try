@@ -1,12 +1,13 @@
  #pragma once
 
  #include <memory>
- #include "../../services/editor_area_service.h"
+#include "../../services/service_interfaces.h"
+#include "../../services/editor_area_service.h"
  #include "../../ui/editor_area_ui.h"
 
  class EditorAreaPart {
  public:
-	explicit EditorAreaPart(EditorAreaService& service);
+	explicit EditorAreaPart(IEditorAreaService& service);
 
 	 void Render(
 		 float left_offset,
@@ -18,10 +19,10 @@
 		 bool block_tab_clicks
 	 );
 
-	EditorAreaService& GetService();
-	const EditorAreaService& GetService() const;
+	IEditorAreaService& GetService();
+	const IEditorAreaService& GetService() const;
 
  private:
-	EditorAreaService& service_;
+	IEditorAreaService& service_;
 	 std::unique_ptr<UI::EditorArea> ui_;
  };

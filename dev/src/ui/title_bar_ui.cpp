@@ -1,6 +1,5 @@
 
 #include "title_bar_ui.h"
-#include "../services/title_bar_service.h"
 #include "../workbench/workbench_config.h"
 #include "imgui.h"
 #include <SDL3/SDL.h>
@@ -117,66 +116,35 @@ void DrawPhageIcon(ImDrawList* draw_list, ImVec2 center, float size, ImU32 color
     }
 }
 
-void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_h, 
-                      bool primary_sidebar_visible, bool panel_visible, bool secondary_sidebar_visible)
+static void RenderMenuBar(const TitleBarViewModel& view_model,
+                          const WorkbenchThemeSizes& sizes,
+                          const WorkbenchThemeColors& colors,
+                          ImDrawList* draw_list,
+                          ImDrawList* fg_list,
+                          ImVec2 window_pos,
+                          float title_h,
+                          float menu_x,
+                          float menu_btn_w,
+                          float dropdown_w,
+                          ImVec4 bg_color,
+                          ImVec4 menu_hover,
+                          ImVec4 text_color)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    const WorkbenchTheme& theme = GetWorkbenchTheme();
-    const WorkbenchThemeColors& colors = theme.colors;
-    const WorkbenchThemeSizes& sizes = theme.sizes;
-
-    ImVec4 bg_color = colors.title_bar_bg;
-    ImVec4 menu_hover = colors.title_bar_menu_hover;
-    ImVec4 text_color = colors.title_bar_text;
-
-    ImDrawList* bg = ImGui::GetBackgroundDrawList();
-    bg->AddRectFilled(ImVec2(0, 0), ImVec2(io.DisplaySize.x, title_h), ImGui::GetColorU32(bg_color));
-
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, title_h));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                              ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
-                              ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav;
-    ImGui::Begin("TitleBar", nullptr, flags);
-    ImDrawList* draw_list = ImGui::GetWindowDrawList();
-    ImDrawList* fg_list = ImGui::GetForegroundDrawList();
-    ImVec2 window_pos = ImGui::GetWindowPos();
-
-    // === Left side: Icon ===
-    float start_x = sizes.title_icon_start_x;
-    float icon_draw_size = title_h * sizes.title_icon_draw_ratio;
-    float icon_layout_w = title_h * sizes.title_icon_layout_w_ratio;
-    float icon_offset_x = start_x;
-    ImVec2 icon_center = ImVec2(window_pos.x + icon_offset_x + icon_layout_w * 0.5f, window_pos.y + title_h * 0.5f);
-    ImU32 color_light = ImGui::GetColorU32(colors.title_bar_icon_light);
-    ImU32 color_dark = ImGui::GetColorU32(colors.title_bar_icon_dark);
-    ImU32 color_edge = ImGui::GetColorU32(colors.title_bar_icon_edge);
-    // extern void DrawPhageIcon(ImDrawList*, ImVec2, float, ImU32, ImU32, ImU32);
-    DrawPhageIcon(draw_list, icon_center, icon_draw_size, color_light, color_dark, color_edge);
-
-    // === Menu bar ===
-    float menu_x = icon_offset_x + icon_layout_w + sizes.title_menu_spacing_x;
-    float menu_btn_w = sizes.title_menu_btn_w;
-    float dropdown_w = sizes.title_dropdown_w;
     const char* menu_names[] = { "File", "Edit", "View", "Help" };
     const int menu_count = 4;
-    int active_menu = (int)service.GetActiveMenu() - 1;
-        bool menu_click_handled = false;
+    int active_menu = (int)view_model.active_menu - 1;
+    bool menu_click_handled = false;
     for (int i = 0; i < menu_count; i++) {
         ImVec2 btn_pos = ImVec2(window_pos.x + menu_x + i * menu_btn_w, window_pos.y);
         ImVec2 btn_size = ImVec2(menu_btn_w, title_h);
         ImVec2 btn_max = ImVec2(btn_pos.x + btn_size.x, btn_pos.y + btn_size.y);
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool is_hovered = (mouse_pos.x >= btn_pos.x && mouse_pos.x <= btn_max.x && mouse_pos.y >= btn_pos.y && mouse_pos.y <= btn_max.y);
-            if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             active_menu = (active_menu == i) ? -1 : i;
-            service.SetActiveMenu(active_menu >= 0 ? (TitleBarMenu)(active_menu + 1) : TitleBarMenu::None);
-                menu_click_handled = true;
+            if (view_model.set_active_menu)
+                view_model.set_active_menu(active_menu >= 0 ? (TitleBarMenu)(active_menu + 1) : TitleBarMenu::None);
+            menu_click_handled = true;
         }
         ImU32 btn_bg = (is_hovered || active_menu == i) ? ImGui::GetColorU32(menu_hover) : ImGui::GetColorU32(bg_color);
         draw_list->AddRectFilled(btn_pos, btn_max, btn_bg);
@@ -223,24 +191,32 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
                                               ImVec2(arrow_x - sizes.title_menu_arrow_w * 0.6f, arrow_y + sizes.title_menu_arrow_h * 0.5f),
                                               ImVec2(arrow_x + sizes.title_menu_arrow_w * 0.4f, arrow_y), ImGui::GetColorU32(text_color));
                 }
-                // 菜单点击事件
                 if (item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !has_submenu[j]) {
                     active_menu = -1;
-                    service.SetActiveMenu(TitleBarMenu::None);
+                    if (view_model.set_active_menu)
+                        view_model.set_active_menu(TitleBarMenu::None);
                     if (i == 0) {
-                        if (j == 1) service.TriggerCommand(CommandId::FileOpen);
-                        else if (j == 2) service.TriggerCommand(CommandId::FileSave);
-                        else if (j == 3) service.TriggerCommand(CommandId::FileExit);
+                        if (view_model.trigger_command) {
+                            if (j == 1) view_model.trigger_command(CommandId::FileOpen);
+                            else if (j == 2) view_model.trigger_command(CommandId::FileSave);
+                            else if (j == 3) view_model.trigger_command(CommandId::FileExit);
+                        }
                     } else if (i == 1) {
-                        if (j == 0) service.TriggerCommand(CommandId::EditUndo);
-                        else if (j == 1) service.TriggerCommand(CommandId::EditRedo);
+                        if (view_model.trigger_command) {
+                            if (j == 0) view_model.trigger_command(CommandId::EditUndo);
+                            else if (j == 1) view_model.trigger_command(CommandId::EditRedo);
+                        }
                     } else if (i == 2) {
-                        if (j == 0) service.TriggerCommand(CommandId::ViewExplorer);
-                        else if (j == 1) service.TriggerCommand(CommandId::ViewConsole);
+                        if (view_model.trigger_command) {
+                            if (j == 0) view_model.trigger_command(CommandId::ViewExplorer);
+                            else if (j == 1) view_model.trigger_command(CommandId::ViewConsole);
+                        }
                     } else if (i == 3) {
-                        if (j == 0) service.TriggerCommand(CommandId::HelpAbout);
+                        if (view_model.trigger_command) {
+                            if (j == 0) view_model.trigger_command(CommandId::HelpAbout);
+                        }
                     }
-                        menu_click_handled = true;
+                    menu_click_handled = true;
                 }
             }
             hovered_submenu_item = current_hovered_item;
@@ -270,10 +246,13 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
                         fg_list->AddText(ImVec2(sub_item_pos.x + sizes.title_menu_text_padding_x, centered_y), ImGui::GetColorU32(text_color), submenu_items[k]);
                         if (sub_item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                             active_menu = -1;
-                            if (k == 0) service.TriggerCommand(CommandId::FileNew2D);
-                            else if (k == 1) service.TriggerCommand(CommandId::FileNew3D);
-                            else if (k == 2) service.TriggerCommand(CommandId::FileNewNodeGraph);
-                            service.SetActiveMenu(TitleBarMenu::None);
+                            if (view_model.trigger_command) {
+                                if (k == 0) view_model.trigger_command(CommandId::FileNew2D);
+                                else if (k == 1) view_model.trigger_command(CommandId::FileNew3D);
+                                else if (k == 2) view_model.trigger_command(CommandId::FileNewNodeGraph);
+                            }
+                            if (view_model.set_active_menu)
+                                view_model.set_active_menu(TitleBarMenu::None);
                             menu_click_handled = true;
                         }
                     }
@@ -281,20 +260,30 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
             }
         }
     }
-        if (menu_click_handled) {
-            service.RequestBlockTabClicksOnce();
-        }
-        if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !menu_click_handled) {
+    if (menu_click_handled) {
+        if (view_model.request_block_tab_clicks_once)
+            view_model.request_block_tab_clicks_once();
+    }
+    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !menu_click_handled) {
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool in_menu_buttons = (mouse_pos.x >= window_pos.x + menu_x && mouse_pos.x <= window_pos.x + menu_x + menu_count * menu_btn_w && mouse_pos.y >= window_pos.y && mouse_pos.y <= window_pos.y + title_h);
         ImVec2 dropdown_btn_pos = ImVec2(window_pos.x + menu_x + active_menu * menu_btn_w, window_pos.y + title_h);
         bool in_dropdown = (mouse_pos.x >= dropdown_btn_pos.x && mouse_pos.x <= dropdown_btn_pos.x + dropdown_w && mouse_pos.y >= dropdown_btn_pos.y && mouse_pos.y <= dropdown_btn_pos.y + 200);
         if (!in_menu_buttons && !in_dropdown) active_menu = -1;
-            active_menu = -1;
-            service.SetActiveMenu(TitleBarMenu::None);
+        active_menu = -1;
+        if (view_model.set_active_menu)
+            view_model.set_active_menu(TitleBarMenu::None);
     }
+}
 
-    // === Right side: Layout buttons + Control buttons ===
+static float RenderLayoutAndWindowButtons(SDL_Window* window,
+                                          const TitleBarViewModel& view_model,
+                                          const WorkbenchThemeSizes& sizes,
+                                          const WorkbenchThemeColors& colors,
+                                          ImDrawList* draw_list,
+                                          ImGuiIO& io,
+                                          float title_h)
+{
     const float btn_w = sizes.title_control_btn_w;
     const float btn_h = title_h;
     const float layout_btn_w = sizes.title_layout_btn_w;
@@ -332,27 +321,27 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
         return draw_square_btn(x_pos, layout_btn_w, layout_btn_h, id, btn_normal, btn_hover, btn_active, draw_icon);
     };
     bool btn_layout_left = draw_layout_btn(layout_start_x + layout_btn_w * 0, "layout_left", [&](ImVec2 c, bool h){
-        float alpha = primary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
+        float alpha = view_model.primary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
         float half = sizes.title_layout_icon_size;
         draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (primary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y-(half-2.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-2.0f)), col);
+        if (view_model.primary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y-(half-2.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-2.0f)), col);
         else draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
     });
     bool btn_layout_bottom = draw_layout_btn(layout_start_x + layout_btn_w * 1, "layout_bottom", [&](ImVec2 c, bool h){
-        float alpha = panel_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
+        float alpha = view_model.panel_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
         float half = sizes.title_layout_icon_size;
         draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (panel_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y+(half*0.12f)), ImVec2(c.x+(half-1.0f), c.y+(half*0.75f)), col);
+        if (view_model.panel_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y+(half*0.12f)), ImVec2(c.x+(half-1.0f), c.y+(half*0.75f)), col);
         else draw_list->AddRect(ImVec2(c.x-half, c.y+(half*0.12f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
     });
     bool btn_layout_right = draw_layout_btn(layout_start_x + layout_btn_w * 2, "layout_right", [&](ImVec2 c, bool h){
-        float alpha = secondary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
+        float alpha = view_model.secondary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
         float half = sizes.title_layout_icon_size;
         draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (secondary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x+(half*0.25f), c.y-(half-2.0f)), ImVec2(c.x+(half-1.0f), c.y+(half-2.0f)), col);
+        if (view_model.secondary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x+(half*0.25f), c.y-(half-2.0f)), ImVec2(c.x+(half-1.0f), c.y+(half-2.0f)), col);
         else draw_list->AddRect(ImVec2(c.x+(half*0.25f), c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
     });
     bool btn_min = draw_control_btn(btn_start_x, "min", btn_normal, btn_hover, btn_active, [&](ImVec2 center, bool hovered) {
@@ -375,15 +364,20 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
         draw_list->AddLine(ImVec2(center.x - size, center.y - size), ImVec2(center.x + size, center.y + size), col, 1.0f);
         draw_list->AddLine(ImVec2(center.x - size, center.y + size), ImVec2(center.x + size, center.y - size), col, 1.0f);
     });
-    // 事件写回 service (commands)
-    if (btn_layout_left) service.TriggerCommand(CommandId::TogglePrimarySidebar);
-    if (btn_layout_bottom) service.TriggerCommand(CommandId::TogglePanel);
-    if (btn_layout_right) service.TriggerCommand(CommandId::ToggleSecondarySidebar);
-    if (btn_min) service.TriggerCommand(CommandId::WindowMinimize);
-    if (btn_max) service.TriggerCommand(CommandId::WindowMaximize);
-    if (btn_close) service.TriggerCommand(CommandId::WindowClose);
+    if (view_model.trigger_command) {
+        if (btn_layout_left) view_model.trigger_command(CommandId::TogglePrimarySidebar);
+        if (btn_layout_bottom) view_model.trigger_command(CommandId::TogglePanel);
+        if (btn_layout_right) view_model.trigger_command(CommandId::ToggleSecondarySidebar);
+        if (btn_min) view_model.trigger_command(CommandId::WindowMinimize);
+        if (btn_max) view_model.trigger_command(CommandId::WindowMaximize);
+        if (btn_close) view_model.trigger_command(CommandId::WindowClose);
+    }
 
-    // 拖动窗口逻辑（原样迁移）
+    return layout_start_x;
+}
+
+static void HandleWindowDrag(SDL_Window* window, float title_h, float layout_start_x, ImGuiIO& io)
+{
     static bool title_dragging = false;
     static bool pending_restore = false;
     static float drag_offset_x = 0, drag_offset_y = 0;
@@ -434,6 +428,58 @@ void RenderTitleBarUI(SDL_Window* window, TitleBarService& service, float title_
             SDL_SetWindowPosition(window, (int)(global_x - drag_offset_x), (int)(global_y - drag_offset_y));
         }
     } else { title_dragging = false; pending_restore = false; }
+}
+
+void RenderTitleBarUI(SDL_Window* window, const TitleBarViewModel& view_model, float title_h)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    const WorkbenchTheme& theme = GetWorkbenchTheme();
+    const WorkbenchThemeColors& colors = theme.colors;
+    const WorkbenchThemeSizes& sizes = theme.sizes;
+
+    ImVec4 bg_color = colors.title_bar_bg;
+    ImVec4 menu_hover = colors.title_bar_menu_hover;
+    ImVec4 text_color = colors.title_bar_text;
+
+    ImDrawList* bg = ImGui::GetBackgroundDrawList();
+    bg->AddRectFilled(ImVec2(0, 0), ImVec2(io.DisplaySize.x, title_h), ImGui::GetColorU32(bg_color));
+
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(io.DisplaySize.x, title_h));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                              ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
+                              ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav;
+    ImGui::Begin("TitleBar", nullptr, flags);
+    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+    ImDrawList* fg_list = ImGui::GetForegroundDrawList();
+    ImVec2 window_pos = ImGui::GetWindowPos();
+
+    // === Left side: Icon ===
+    float start_x = sizes.title_icon_start_x;
+    float icon_draw_size = title_h * sizes.title_icon_draw_ratio;
+    float icon_layout_w = title_h * sizes.title_icon_layout_w_ratio;
+    float icon_offset_x = start_x;
+    ImVec2 icon_center = ImVec2(window_pos.x + icon_offset_x + icon_layout_w * 0.5f, window_pos.y + title_h * 0.5f);
+    ImU32 color_light = ImGui::GetColorU32(colors.title_bar_icon_light);
+    ImU32 color_dark = ImGui::GetColorU32(colors.title_bar_icon_dark);
+    ImU32 color_edge = ImGui::GetColorU32(colors.title_bar_icon_edge);
+    // extern void DrawPhageIcon(ImDrawList*, ImVec2, float, ImU32, ImU32, ImU32);
+    DrawPhageIcon(draw_list, icon_center, icon_draw_size, color_light, color_dark, color_edge);
+
+    // === Menu bar ===
+    float menu_x = icon_offset_x + icon_layout_w + sizes.title_menu_spacing_x;
+    float menu_btn_w = sizes.title_menu_btn_w;
+    float dropdown_w = sizes.title_dropdown_w;
+    RenderMenuBar(view_model, sizes, colors, draw_list, fg_list, window_pos, title_h, menu_x, menu_btn_w, dropdown_w, bg_color, menu_hover, text_color);
+
+    // === Right side: Layout buttons + Control buttons ===
+    float layout_start_x = RenderLayoutAndWindowButtons(window, view_model, sizes, colors, draw_list, io, title_h);
+    HandleWindowDrag(window, title_h, layout_start_x, io);
     ImGui::End();
     ImGui::PopStyleVar(4);
     ImDrawList* fg = ImGui::GetForegroundDrawList();

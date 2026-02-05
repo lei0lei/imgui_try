@@ -4,23 +4,24 @@
 // 负责选中项、可见性等状态的存储和操作
 #include <string>
 #include <vector>
+#include "service_interfaces.h"
 
-class PrimarySidebarService {
+class PrimarySidebarService : public IPrimarySidebarService {
 public:
     PrimarySidebarService();
 
     // 获取/设置当前选中的项目
-    int GetSelectedItem() const;
-    void SetSelectedItem(int index);
+    int GetSelectedItem() const override;
+    void SetSelectedItem(int index) override;
 
     // 获取/设置侧边栏可见性
-    bool IsVisible() const;
-    void SetVisible(bool visible);
-    void ToggleVisible();
+    bool IsVisible() const override;
+    void SetVisible(bool visible) override;
+    void ToggleVisible() override;
 
     // 可选：管理主侧边栏的项目列表
-    const std::vector<std::string>& GetItems() const;
-    void SetItems(const std::vector<std::string>& items);
+    const std::vector<std::string>& GetItems() const override;
+    void SetItems(const std::vector<std::string>& items) override;
 
 private:
     int selected_item_ = 0;

@@ -190,8 +190,8 @@ WorkbenchTheme MakeDefaultTheme()
     theme.sizes.editor_node_grid_draw_min = 12.0f;
     theme.sizes.editor_node_grid_draw_max = 72.0f;
     theme.sizes.editor_node_grid_minor_threshold = 1.25f;
-    theme.sizes.editor_node_zoom_min = 0.2f;
-    theme.sizes.editor_node_zoom_max = 2.5f;
+    theme.sizes.editor_node_zoom_min = 0.3f;
+    theme.sizes.editor_node_zoom_max = 1.5f;
     theme.sizes.editor_node_zoom_step = 0.1f;
     theme.sizes.editor_node_overlay_padding = 6.0f;
     theme.sizes.editor_node_overlay_rounding = 4.0f;

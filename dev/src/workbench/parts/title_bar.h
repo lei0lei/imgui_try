@@ -1,11 +1,11 @@
  #pragma once
  #include <SDL3/SDL.h>
 
- #include "../../services/title_bar_service.h"
+#include "../../services/service_interfaces.h"
 
  class TitleBarPart {
  public:
-	explicit TitleBarPart(TitleBarService& service);
+	explicit TitleBarPart(ITitleBarService& service);
 
 	 void Render(
 		 SDL_Window* window,
@@ -15,9 +15,9 @@
 		 bool secondary_sidebar_visible
 	 );
 
-	TitleBarService& GetService();
-	const TitleBarService& GetService() const;
+	ITitleBarService& GetService();
+	const ITitleBarService& GetService() const;
 
  private:
-	TitleBarService& service_;
+	ITitleBarService& service_;
  };
