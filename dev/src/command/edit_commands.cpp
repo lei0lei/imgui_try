@@ -1,3 +1,10 @@
+/**
+ * @file edit_commands.cpp
+ * @brief 编辑相关命令的实现（撤销、重做等）
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "edit_commands.h"
 
 void RegisterEditCommands(CommandService& service, CommandHandlersContext ctx)

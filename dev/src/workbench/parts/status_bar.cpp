@@ -1,3 +1,10 @@
+/**
+ * @file status_bar.cpp
+ * @brief 状态栏工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "status_bar.h"
  #include "../../ui/status_bar_ui.h"
 

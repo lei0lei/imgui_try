@@ -1,3 +1,10 @@
+/**
+ * @file primary_sidebar.cpp
+ * @brief 主侧边栏工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "primary_sidebar.h"
 
 PrimarySidebarPart::PrimarySidebarPart(IPrimarySidebarService& service)
@@ -17,7 +24,7 @@ PrimarySidebarPart::PrimarySidebarPart(IPrimarySidebarService& service)
  {
 	 PrimarySidebarViewModel vm{};
 	 vm.active_view = view_registry.GetActiveView(mode, ViewContainer::PrimarySidebar);
-	 vm.fallback_view = UI::GetDefaultPrimaryView(active_item);
+	 vm.fallback_view = UI::GetDefaultPrimaryView(mode, active_item);
 	 vm.is_visible = service_.IsVisible();
 	 vm.active_item = active_item;
 	 return DrawPrimarySidebarUI(activity_bar_w, title_h, status_bar_h, width, vm, active_tab);

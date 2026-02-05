@@ -1,3 +1,10 @@
+/**
+ * @file status_bar_ui.cpp
+ * @brief 底部状态栏的UI渲染
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "status_bar_ui.h"
 #include "imgui.h"
 #include "../workbench/workbench_config.h"

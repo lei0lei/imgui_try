@@ -1,3 +1,10 @@
+/**
+ * @file view_registry_defaults.cpp
+ * @brief 默认视图注册表设置和配置
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "view_registry_defaults.h"
 #include "view_registry_defaults_config.h"
 

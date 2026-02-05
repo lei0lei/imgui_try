@@ -1,3 +1,10 @@
+/**
+ * @file editor_area.cpp
+ * @brief 编辑器区域工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "editor_area.h"
 
 EditorAreaPart::EditorAreaPart(IEditorAreaService& service)
@@ -20,6 +27,7 @@ EditorAreaPart::EditorAreaPart(IEditorAreaService& service)
 	 vm.get_active_tab = [this]() -> EditorTab* { return service_.GetActiveTab(); };
 	 vm.close_tab = [this](int index) { service_.CloseTab(index); };
 	 vm.activate_tab = [this](int index) { service_.ActivateTab(index); };
+	 vm.move_tab = [this](int from_index, int to_index) { service_.MoveTab(from_index, to_index); };
 	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks, vm);
  }
 

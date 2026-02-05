@@ -1,3 +1,10 @@
+/**
+ * @file main.cpp
+ * @brief SDL3 Vulkan ImGui应用程序的主入口点
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 // Dear ImGui: standalone example application for SDL3 + Vulkan
 
 // Learn about Dear ImGui:
@@ -408,7 +415,7 @@ int main(int, char**)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
-    // Setup Dear ImGui style
+    // 设置 Dear ImGui 样式
     WorkbenchConfig config;
     {
         const char* base_path = SDL_GetBasePath();
@@ -516,29 +523,29 @@ int main(int, char**)
 
         const WorkbenchMetrics& metrics = workbench.GetUiMetrics();
         
-        // Activity bar）
+        // 渲染Activity bar
         workbench.RenderActivityBar(metrics);
 
-        // Title bar
+        // 渲染Title bar
         workbench.RenderTitleBar(metrics);
 
-        // Status bar
+        // 渲染Status bar
         workbench.RenderStatusBar(metrics);
 
         // Editor area (main content area)
 
-        // title bar menus and window actions
+        // 处理窗口和菜单操作
         workbench.HandleWindowAndMenuActions(done, window);
 
         LayoutInfo layout = workbench.ComputeLayout(metrics);
 
-        // Primary sidebar
+        // 渲染Primary sidebar
         workbench.RenderPrimarySidebar(metrics);
 
-        // Editor area
+        // 渲染Editor area
         workbench.RenderEditorArea(metrics, layout);
 
-
+        // 渲染Panel 和 Secondary sidebar
         workbench.RenderPanelAndSecondary(metrics, layout);
         
 

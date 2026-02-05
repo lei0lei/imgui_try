@@ -1,3 +1,10 @@
+/**
+ * @file panel_ui.cpp
+ * @brief 底部面板组件的UI渲染
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "panel_ui.h"
 #include <imgui.h>
 #include "../workbench/workbench_config.h"
@@ -51,47 +58,51 @@ PanelResult DrawPanelUI(float left_offset,
     const std::vector<ViewDefinition>* views = view_model.views;
     float tab_height = sizes.panel_tab_height;
     float tab_width = sizes.panel_tab_width;
+    bool show_tabs = view_model.show_tabs && views && views->size() > 1;
 
     if (views && !views->empty()) {
         int active_index = view_model.active_index;
-        for (int i = 0; i < static_cast<int>(views->size()); ++i)
-        {
-            ImVec2 tab_min = ImVec2(window_pos.x + i * tab_width, window_pos.y);
-            ImVec2 tab_max = ImVec2(tab_min.x + tab_width, tab_min.y + tab_height);
-            ImVec2 mouse_pos = ImGui::GetMousePos();
-            bool is_hovered = (mouse_pos.x >= tab_min.x && mouse_pos.x <= tab_max.x &&
-                              mouse_pos.y >= tab_min.y && mouse_pos.y <= tab_max.y);
-            bool is_active = (active_index == i);
-
-            ImU32 tab_color = is_active ? ImGui::GetColorU32(tab_active) : ImGui::GetColorU32(tab_bg);
-            if (!is_active && is_hovered)
+        if (show_tabs) {
+            for (int i = 0; i < static_cast<int>(views->size()); ++i)
             {
-                tab_color = ImGui::GetColorU32(colors.panel_tab_hover);
-            }
-            draw_list->AddRectFilled(tab_min, tab_max, tab_color);
+                ImVec2 tab_min = ImVec2(window_pos.x + i * tab_width, window_pos.y);
+                ImVec2 tab_max = ImVec2(tab_min.x + tab_width, tab_min.y + tab_height);
+                ImVec2 mouse_pos = ImGui::GetMousePos();
+                bool is_hovered = (mouse_pos.x >= tab_min.x && mouse_pos.x <= tab_max.x &&
+                                  mouse_pos.y >= tab_min.y && mouse_pos.y <= tab_max.y);
+                bool is_active = (active_index == i);
 
-            ImVec2 text_size = ImGui::CalcTextSize((*views)[i].title.c_str());
-            ImVec2 text_pos = ImVec2(tab_min.x + (tab_width - text_size.x) * 0.5f,
-                                    tab_min.y + (tab_height - text_size.y) * 0.5f);
-            draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), (*views)[i].title.c_str());
+                ImU32 tab_color = is_active ? ImGui::GetColorU32(tab_active) : ImGui::GetColorU32(tab_bg);
+                if (!is_active && is_hovered)
+                {
+                    tab_color = ImGui::GetColorU32(colors.panel_tab_hover);
+                }
+                draw_list->AddRectFilled(tab_min, tab_max, tab_color);
 
-            if (is_active)
-            {
-                draw_list->AddRectFilled(ImVec2(tab_min.x, tab_min.y),
-                                       ImVec2(tab_max.x, tab_min.y + sizes.panel_active_indicator_h),
-                                       ImGui::GetColorU32(colors.panel_active_indicator));
-            }
+                ImVec2 text_size = ImGui::CalcTextSize((*views)[i].title.c_str());
+                ImVec2 text_pos = ImVec2(tab_min.x + (tab_width - text_size.x) * 0.5f,
+                                        tab_min.y + (tab_height - text_size.y) * 0.5f);
+                draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), (*views)[i].title.c_str());
 
-            if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-            {
-                if (view_model.on_select_tab)
-                    view_model.on_select_tab(i);
-                active_index = i;
+                if (is_active)
+                {
+                    draw_list->AddRectFilled(ImVec2(tab_min.x, tab_min.y),
+                                           ImVec2(tab_max.x, tab_min.y + sizes.panel_active_indicator_h),
+                                           ImGui::GetColorU32(colors.panel_active_indicator));
+                }
+
+                if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                {
+                    if (view_model.on_select_tab)
+                        view_model.on_select_tab(i);
+                    active_index = i;
+                }
             }
         }
 
-        ImGui::SetCursorPos(ImVec2(sizes.panel_content_padding_x, tab_height + sizes.panel_content_padding_y));
-        ImGui::BeginChild("PanelContent", ImVec2(panel_width - sizes.panel_content_padding_x * 2.0f, panel_h - tab_height - sizes.panel_content_padding_y * 2.0f), false);
+        float content_y = show_tabs ? tab_height : 0.0f;
+        ImGui::SetCursorPos(ImVec2(sizes.panel_content_padding_x, content_y + sizes.panel_content_padding_y));
+        ImGui::BeginChild("PanelContent", ImVec2(panel_width - sizes.panel_content_padding_x * 2.0f, panel_h - content_y - sizes.panel_content_padding_y * 2.0f), false);
         if (!active_tab) {
             ImGui::Text("No editor open. Panel is idle.");
         } else {

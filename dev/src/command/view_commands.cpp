@@ -1,3 +1,10 @@
+/**
+ * @file view_commands.cpp
+ * @brief 视图相关命令的实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "view_commands.h"
 #include "../services/panel_service.h"
 

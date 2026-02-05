@@ -1,3 +1,10 @@
+/**
+ * @file editor_area_ui.cpp
+ * @brief 主编辑器区域的UI渲染，包含标签和内容
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "editor_area_ui.h"
 #include "editor_scene_renderers.h"
 #include "imgui.h"
@@ -41,6 +48,7 @@ static void DrawWelcomeScreen(ImVec2 area_min, ImVec2 area_max)
 static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max, 
                        const std::vector<EditorTab>& tabs, 
                        int& closed_tab, int& active_tab,
+                       int& move_from, int& move_to,
                        bool block_tab_clicks)
 {
     const WorkbenchTheme& theme = GetWorkbenchTheme();
@@ -58,7 +66,19 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
     
     ImVec2 mouse_pos = ImGui::GetMousePos();
     
-    for (size_t i = 0; i < tabs.size(); i++)
+    static int drag_index = -1;
+    static int pending_click = -1;
+    static bool dragging = false;
+    static int drag_target = -1;
+
+    int visible_count = static_cast<int>(tabs.size());
+    float max_visible = (tab_width > 0.0f) ? ((tab_bar_max.x - tab_bar_min.x) / tab_width) : 0.0f;
+    if (max_visible > 0.0f) {
+        int max_vis = static_cast<int>(max_visible);
+        if (max_vis < visible_count) visible_count = max_vis;
+    }
+
+    for (int i = 0; i < static_cast<int>(tabs.size()); i++)
     {
         const EditorTab& tab = tabs[i];
         
@@ -80,6 +100,12 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
         }
         
         draw_list->AddRectFilled(tab_min, tab_max, tab_bg);
+
+        // Drag placeholder highlight
+        if (dragging && i == drag_target) {
+            draw_list->AddRectFilled(tab_min, tab_max, ImGui::GetColorU32(colors.editor_tab_hover_bg), 0.0f);
+            draw_list->AddRect(tab_min, tab_max, ImGui::GetColorU32(colors.editor_tab_active_indicator), 0.0f, 0, 2.0f);
+        }
         
         // 激活标签的顶部高亮线
         if (tab.active) {
@@ -139,17 +165,72 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
         // 处理点击事件
         if (!block_tab_clicks && is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             if (close_hovered) {
-                // 点击关闭按钮
                 closed_tab = (int)i;
             } else {
-                // 点击标签切换激活
-                active_tab = (int)i;
+                pending_click = (int)i;
+                drag_index = (int)i;
+                dragging = false;
+                drag_target = (int)i;
             }
         }
         
         // 标签右边框
         draw_list->AddLine(ImVec2(tab_max.x, tab_min.y), tab_max, 
                   ImGui::GetColorU32(colors.editor_tab_border), sizes.editor_tab_border_thickness);
+    }
+
+    if (!block_tab_clicks && drag_index >= 0 && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+        dragging = true;
+        float x = mouse_pos.x - tab_bar_min.x;
+        int target = static_cast<int>(x / tab_width);
+        if (target < 0) target = 0;
+        if (target >= visible_count) target = visible_count - 1;
+        drag_target = target;
+        move_from = drag_index;
+        move_to = target;
+    }
+
+    if (!block_tab_clicks && drag_index >= 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        if (dragging) {
+            if (move_from >= 0 && move_to >= 0 && move_from != move_to) {
+                // move request already set
+            }
+        } else if (pending_click >= 0) {
+            active_tab = pending_click;
+        }
+        drag_index = -1;
+        pending_click = -1;
+        dragging = false;
+        drag_target = -1;
+    }
+
+    // Draw drag ghost with easing
+    static float ghost_x_smooth = 0.0f;
+    if (dragging && drag_index >= 0 && drag_index < static_cast<int>(tabs.size())) {
+        const EditorTab& tab = tabs[drag_index];
+        float target_x = mouse_pos.x - tab_width * 0.5f;
+        float min_x = tab_bar_min.x;
+        float max_x = tab_bar_max.x - tab_width;
+        if (target_x < min_x) target_x = min_x;
+        if (target_x > max_x) target_x = max_x;
+
+        float dt = ImGui::GetIO().DeltaTime;
+        float smooth = 1.0f - std::exp(-12.0f * dt);
+        if (ghost_x_smooth == 0.0f) {
+            ghost_x_smooth = target_x;
+        }
+        ghost_x_smooth = ghost_x_smooth + (target_x - ghost_x_smooth) * smooth;
+
+        ImVec2 ghost_min = ImVec2(ghost_x_smooth, tab_bar_min.y);
+        ImVec2 ghost_max = ImVec2(ghost_x_smooth + tab_width, tab_bar_max.y);
+        ImU32 ghost_bg = ImGui::GetColorU32(ImVec4(colors.editor_tab_active_bg.x, colors.editor_tab_active_bg.y, colors.editor_tab_active_bg.z, 0.45f));
+        draw_list->AddRectFilled(ghost_min, ghost_max, ghost_bg);
+        draw_list->AddRect(ghost_min, ghost_max, ImGui::GetColorU32(colors.editor_tab_active_indicator), 0.0f, 0, 2.0f);
+        float text_x = ghost_min.x + sizes.editor_tab_text_padding_x;
+        float text_y = ghost_min.y + (tab_height - ImGui::GetTextLineHeight()) * 0.5f;
+        draw_list->AddText(ImVec2(text_x, text_y), ImGui::GetColorU32(colors.editor_tab_text_active), tab.name.c_str());
+    } else {
+        ghost_x_smooth = 0.0f;
     }
     
     // 标签栏底部边框
@@ -229,7 +310,9 @@ void EditorArea::Draw(
         // 处理标签栏交互
         int closed_tab = -1;
         int active_tab = -1;
-        DrawTabBar(tab_bar_min, tab_bar_max, *tabs_ptr, closed_tab, active_tab, block_tab_clicks);
+        int move_from = -1;
+        int move_to = -1;
+        DrawTabBar(tab_bar_min, tab_bar_max, *tabs_ptr, closed_tab, active_tab, move_from, move_to, block_tab_clicks);
         
         // 处理用户操作（通过 service）
         if (closed_tab >= 0 && view_model.close_tab) {
@@ -237,6 +320,9 @@ void EditorArea::Draw(
         }
         if (active_tab >= 0 && view_model.activate_tab) {
             view_model.activate_tab(active_tab);
+        }
+        if (move_from >= 0 && move_to >= 0 && move_from != move_to && view_model.move_tab) {
+            view_model.move_tab(move_from, move_to);
         }
 
         // 重新获取 tabs 指针（可能已更新）

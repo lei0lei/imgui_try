@@ -16,6 +16,7 @@ struct PanelViewModel {
     std::function<void(int)> on_select_tab;
     const ViewDefinition* active_view = nullptr;
     bool has_active_tab = false;
+    bool show_tabs = true;
 };
 
 PanelResult DrawPanelUI(float left_offset,

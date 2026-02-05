@@ -1,3 +1,10 @@
+/**
+ * @file panel_service.cpp
+ * @brief 面板服务的实现，用于管理底部面板可见性
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "panel_service.h"
 
 PanelService::PanelService() {

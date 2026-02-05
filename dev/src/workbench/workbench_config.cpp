@@ -1,3 +1,10 @@
+/**
+ * @file workbench_config.cpp
+ * @brief 工作台的配置管理
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "workbench_config.h"
 
 #include <algorithm>

@@ -1,3 +1,10 @@
+/**
+ * @file command_service.cpp
+ * @brief 命令服务的实现，用于管理应用程序命令
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "command_service.h"
 
 void CommandService::Register(CommandId id, Handler handler)

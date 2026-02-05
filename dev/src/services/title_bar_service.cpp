@@ -1,3 +1,10 @@
+/**
+ * @file title_bar_service.cpp
+ * @brief 标题栏服务的实现，用于窗口标题和控件
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "title_bar_service.h"
 
 TitleBarService::TitleBarService() {

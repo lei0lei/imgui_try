@@ -1,3 +1,10 @@
+/**
+ * @file workbench_renderer.cpp
+ * @brief 工作台UI布局的主渲染器
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "workbench_renderer.h"
 #include "../ui/view_registry_defaults.h"
 #include "../workbench/workbench_config.h"
@@ -138,24 +145,9 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
     ActivityBarResult result = activity_bar_part_.Render(title_h, status_bar_h, activity_bar_w);
     if (result.item_clicked) {
         SceneType mode = services_.GetEditorAreaService().GetActiveSceneType(SceneType::Scene3D);
-        switch (result.selected_item) {
-            case ActivityBarItem::Explorer:
-                services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "explorer");
-                break;
-            case ActivityBarItem::Search:
-                services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "search");
-                break;
-            case ActivityBarItem::NodeEditor:
-                services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "node");
-                break;
-            case ActivityBarItem::Debug:
-                services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "debug");
-                break;
-            case ActivityBarItem::Extensions:
-                services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "extensions");
-                break;
-            default:
-                break;
+        const ViewDefinition def = UI::GetDefaultPrimaryView(mode, result.selected_item);
+        if (def.renderer) {
+            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, def.id);
         }
         if (services_.GetLayoutService().IsPrimarySidebarVisible() && result.selected_item == last_activity_item_) {
             services_.GetLayoutService().SetPrimarySidebarVisible(false);

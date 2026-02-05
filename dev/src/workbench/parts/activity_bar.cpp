@@ -1,3 +1,10 @@
+/**
+ * @file activity_bar.cpp
+ * @brief 活动栏工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "activity_bar.h"
 
 ActivityBarPart::ActivityBarPart(IActivityBarService& service)

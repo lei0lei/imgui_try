@@ -16,6 +16,7 @@ public:
         std::function<EditorTab*()> get_active_tab;
         std::function<void(int)> close_tab;
         std::function<void(int)> activate_tab;
+        std::function<void(int,int)> move_tab;
     };
 
     void Draw(

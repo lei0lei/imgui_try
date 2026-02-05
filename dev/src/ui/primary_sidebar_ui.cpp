@@ -1,3 +1,9 @@
+/**
+ * @file primary_sidebar_ui.cpp
+ * @brief 主侧边栏的UI渲染（资源管理器等）
+ * @author Your Name
+ * @date 2026-02-05
+ */
 
 #include "primary_sidebar_ui.h"
 #include "imgui.h"

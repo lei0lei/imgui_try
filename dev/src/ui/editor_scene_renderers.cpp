@@ -1,8 +1,16 @@
+/**
+ * @file editor_scene_renderers.cpp
+ * @brief 各种编辑器场景渲染器的实现，用于不同文件类型
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "editor_scene_renderers.h"
 #include "../workbench/workbench_config.h"
 #include <SDL3/SDL.h>
 #include <cmath>
 #include <algorithm>
+#include <tuple>
 
 namespace UI {
 
@@ -270,9 +278,173 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
                       content_min.y + (canvas_pos.y + tab.node_canvas_pan.y) * tab.node_canvas_zoom);
     };
 
-    if (allow_input && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-        ImGui::OpenPopup("node_canvas_context");
-    }
+    auto find_node_by_id = [&](int id) -> EditorTab::Node* {
+        for (auto& node : tab.nodes) {
+            if (node.id == id) {
+                return &node;
+            }
+        }
+        return nullptr;
+    };
+
+    float base_font_size = ImGui::GetFontSize();
+    float font_size = base_font_size * tab.node_canvas_zoom;
+    float title_h = font_size * 1.8f;
+    float port_h = font_size * 1.25f;
+    float vert_top = font_size * 0.5f;
+    float vert_bottom = font_size * 0.5f;
+    float horiz_pad = font_size * 1.7f;
+    float default_width = 160.0f;
+    float port_radius = 0.6f * font_size * 0.5f;
+
+    auto port_center_screen = [&](const EditorTab::Node& node, bool is_output, int port_index, float port_radius) -> ImVec2 {
+        ImVec2 node_pos = canvas_to_screen(node.pos);
+        ImVec2 node_size = ImVec2(node.size.x * tab.node_canvas_zoom, node.size.y * tab.node_canvas_zoom);
+        float x = is_output ? (node_pos.x + node_size.x - port_radius) : (node_pos.x + port_radius);
+        float y = node_pos.y + title_h + vert_top + port_h * 0.5f + port_index * port_h;
+        return ImVec2(x, y);
+    };
+
+    auto hit_test_port = [&](ImVec2 mouse, float port_radius) -> std::tuple<int, int, bool> {
+        for (auto it = tab.nodes.rbegin(); it != tab.nodes.rend(); ++it) {
+            const auto& node = *it;
+            for (int i = 0; i < static_cast<int>(node.outputs.size()); ++i) {
+                ImVec2 c = port_center_screen(node, true, i, port_radius);
+                ImVec2 d = ImVec2(c.x - mouse.x, c.y - mouse.y);
+                if ((d.x * d.x + d.y * d.y) <= port_radius * port_radius) {
+                    return { node.id, i, true };
+                }
+            }
+            for (int i = 0; i < static_cast<int>(node.inputs.size()); ++i) {
+                ImVec2 c = port_center_screen(node, false, i, port_radius);
+                ImVec2 d = ImVec2(c.x - mouse.x, c.y - mouse.y);
+                if ((d.x * d.x + d.y * d.y) <= port_radius * port_radius) {
+                    return { node.id, i, false };
+                }
+            }
+        }
+        return { 0, -1, false };
+    };
+
+    auto hit_test_node = [&](ImVec2 mouse) -> int {
+        for (auto it = tab.nodes.rbegin(); it != tab.nodes.rend(); ++it) {
+            const auto& node = *it;
+            ImVec2 node_pos = canvas_to_screen(node.pos);
+            ImVec2 node_size = ImVec2(node.size.x * tab.node_canvas_zoom, node.size.y * tab.node_canvas_zoom);
+            ImVec2 node_max = ImVec2(node_pos.x + node_size.x, node_pos.y + node_size.y);
+            if (mouse.x >= node_pos.x && mouse.x <= node_max.x && mouse.y >= node_pos.y && mouse.y <= node_max.y) {
+                return node.id;
+            }
+        }
+        return 0;
+    };
+
+    auto update_node_layout = [&]() {
+        for (auto& node : tab.nodes) {
+            int max_ports = static_cast<int>(std::max(node.inputs.size(), node.outputs.size()));
+            float body_h = std::max(1, max_ports) * port_h + vert_top + vert_bottom;
+            float total_h = title_h + body_h;
+            if (node.size.y * tab.node_canvas_zoom < total_h) {
+                node.size.y = total_h / tab.node_canvas_zoom;
+            }
+            float text_w = ImGui::CalcTextSize(node.title.c_str()).x;
+            float min_w = std::max(default_width, text_w + horiz_pad * 2.0f);
+            if (node.size.x < min_w) {
+                node.size.x = min_w;
+            }
+        }
+    };
+
+    update_node_layout();
+
+    auto is_input_connected = [&](int node_id, int port_index) {
+        for (const auto& link : tab.links) {
+            if (link.to_node == node_id && link.to_port == port_index) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto is_output_connected = [&](int node_id, int port_index) {
+        for (const auto& link : tab.links) {
+            if (link.from_node == node_id && link.from_port == port_index) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    auto bezier_point = [](ImVec2 p1, ImVec2 p2, ImVec2 p3, ImVec2 p4, float t) {
+        float u = 1.0f - t;
+        float tt = t * t;
+        float uu = u * u;
+        float uuu = uu * u;
+        float ttt = tt * t;
+        ImVec2 p = ImVec2(0.0f, 0.0f);
+        p.x = uuu * p1.x + 3.0f * uu * t * p2.x + 3.0f * u * tt * p3.x + ttt * p4.x;
+        p.y = uuu * p1.y + 3.0f * uu * t * p2.y + 3.0f * u * tt * p3.y + ttt * p4.y;
+        return p;
+    };
+
+    auto dist_to_segment = [](ImVec2 p, ImVec2 a, ImVec2 b) {
+        ImVec2 ab = ImVec2(b.x - a.x, b.y - a.y);
+        ImVec2 ap = ImVec2(p.x - a.x, p.y - a.y);
+        float ab_len2 = ab.x * ab.x + ab.y * ab.y;
+        float t = (ab_len2 > 0.0f) ? (ap.x * ab.x + ap.y * ab.y) / ab_len2 : 0.0f;
+        t = std::clamp(t, 0.0f, 1.0f);
+        ImVec2 proj = ImVec2(a.x + ab.x * t, a.y + ab.y * t);
+        ImVec2 d = ImVec2(p.x - proj.x, p.y - proj.y);
+        return std::sqrt(d.x * d.x + d.y * d.y);
+    };
+
+    auto hit_test_link = [&](ImVec2 mouse) -> int {
+        const int samples = 20;
+        const float threshold = 6.0f;
+        for (int i = static_cast<int>(tab.links.size()) - 1; i >= 0; --i) {
+            const auto& link = tab.links[i];
+            const EditorTab::Node* from_node = nullptr;
+            const EditorTab::Node* to_node = nullptr;
+            for (const auto& node : tab.nodes) {
+                if (node.id == link.from_node) {
+                    from_node = &node;
+                }
+                if (node.id == link.to_node) {
+                    to_node = &node;
+                }
+            }
+            if (!from_node || !to_node) {
+                continue;
+            }
+            if (link.from_port < 0 || link.from_port >= static_cast<int>(from_node->outputs.size()) ||
+                link.to_port < 0 || link.to_port >= static_cast<int>(to_node->inputs.size())) {
+                continue;
+            }
+            float font_size = ImGui::GetFontSize() * tab.node_canvas_zoom;
+            float port_radius = 0.6f * font_size * 0.5f;
+            ImVec2 p1 = port_center_screen(*from_node, true, link.from_port, port_radius);
+            ImVec2 p4 = port_center_screen(*to_node, false, link.to_port, port_radius);
+            float dx = std::abs(p4.x - p1.x) * 0.5f;
+            ImVec2 p2 = ImVec2(p1.x + dx, p1.y);
+            ImVec2 p3 = ImVec2(p4.x - dx, p4.y);
+
+            ImVec2 prev = p1;
+            bool hit = false;
+            for (int s = 1; s <= samples; ++s) {
+                float t = static_cast<float>(s) / static_cast<float>(samples);
+                ImVec2 curr = bezier_point(p1, p2, p3, p4, t);
+                if (dist_to_segment(mouse, prev, curr) <= threshold) {
+                    hit = true;
+                    break;
+                }
+                prev = curr;
+            }
+            if (hit) {
+                return i;
+            }
+        }
+        return -1;
+    };
 
     bool request_add_node = false;
     ImVec2 request_node_pos = ImVec2(0.0f, 0.0f);
@@ -281,20 +453,145 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
         request_node_pos = screen_to_canvas(io.MousePos);
     }
 
-    if (ImGui::BeginPopup("node_canvas_context")) {
-        if (ImGui::MenuItem("Add Node")) {
-            request_add_node = true;
-            request_node_pos = screen_to_canvas(io.MousePos);
-        }
-        ImGui::EndPopup();
+    if (tab.request_add_node_from_library && !tab.pending_node_type.empty()) {
+        request_add_node = true;
+        request_node_pos = screen_to_canvas(ImVec2((content_min.x + content_max.x) * 0.5f,
+                                                   (content_min.y + content_max.y) * 0.5f));
     }
 
     if (request_add_node) {
+        auto configure_ports = [](EditorTab::Node& node, const std::string& type) {
+            node.inputs.clear();
+            node.outputs.clear();
+            if (type == "Gain") {
+                node.inputs.push_back({ "In", EditorTab::NodePortType::Double });
+                node.outputs.push_back({ "Out", EditorTab::NodePortType::Double });
+            } else if (type == "Test") {
+                node.inputs.push_back({ "In1", EditorTab::NodePortType::Float });
+                node.inputs.push_back({ "In2", EditorTab::NodePortType::Double });
+                node.inputs.push_back({ "In3", EditorTab::NodePortType::Int });
+                node.inputs.push_back({ "In4", EditorTab::NodePortType::Double });
+                node.outputs.push_back({ "Out1", EditorTab::NodePortType::Int });
+                node.outputs.push_back({ "Out2", EditorTab::NodePortType::Double });
+                node.outputs.push_back({ "Out3", EditorTab::NodePortType::Generic });
+            } else if (type == "If") {
+                node.inputs.push_back({ "Cond", EditorTab::NodePortType::Bool });
+                node.inputs.push_back({ "Value", EditorTab::NodePortType::Generic });
+                node.outputs.push_back({ "Out", EditorTab::NodePortType::Generic });
+            } else if (type == "Switch") {
+                node.inputs.push_back({ "A", EditorTab::NodePortType::Generic });
+                node.inputs.push_back({ "B", EditorTab::NodePortType::Generic });
+                node.inputs.push_back({ "Sel", EditorTab::NodePortType::Bool });
+                node.outputs.push_back({ "Out", EditorTab::NodePortType::Generic });
+            } else {
+                node.inputs.push_back({ "In", EditorTab::NodePortType::Generic });
+                node.outputs.push_back({ "Out", EditorTab::NodePortType::Generic });
+            }
+        };
+
         EditorTab::Node node;
         node.id = tab.node_next_id++;
-        node.title = "Node " + std::to_string(node.id);
+        if (!tab.pending_node_type.empty()) {
+            node.title = tab.pending_node_type + " " + std::to_string(node.id);
+        } else {
+            node.title = "Node " + std::to_string(node.id);
+        }
+        node.type = tab.pending_node_type.empty() ? "Generic" : tab.pending_node_type;
         node.pos = request_node_pos;
+        configure_ports(node, tab.pending_node_type);
         tab.nodes.push_back(node);
+        tab.request_add_node_from_library = false;
+        tab.pending_node_type.clear();
+    }
+
+    if (allow_input && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !space_down) {
+        float port_radius = 0.6f * font_size * 0.5f;
+        auto [port_node_id, port_index, is_output] = hit_test_port(mouse_pos, port_radius);
+        if (port_node_id != 0 && is_output) {
+            tab.linking = true;
+            tab.link_from_node_id = port_node_id;
+            tab.link_from_port = port_index;
+        } else {
+            int node_id = hit_test_node(mouse_pos);
+            if (node_id != 0) {
+                tab.selected_node_id = node_id;
+                tab.dragging_node_id = node_id;
+                if (auto node = find_node_by_id(node_id)) {
+                    ImVec2 node_pos = canvas_to_screen(node->pos);
+                    tab.dragging_node_offset = ImVec2(mouse_pos.x - node_pos.x, mouse_pos.y - node_pos.y);
+                } else {
+                    tab.dragging_node_offset = ImVec2(0.0f, 0.0f);
+                }
+            } else {
+                tab.selected_node_id = 0;
+            }
+        }
+    }
+
+    if (allow_input && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+        float port_radius = 0.6f * font_size * 0.5f;
+        auto [port_node_id, port_index, is_output] = hit_test_port(mouse_pos, port_radius);
+        if (port_node_id != 0) {
+            if (is_output) {
+                tab.links.erase(std::remove_if(tab.links.begin(), tab.links.end(), [&](const EditorTab::Link& link) {
+                    return link.from_node == port_node_id && link.from_port == port_index;
+                }), tab.links.end());
+            } else {
+                tab.links.erase(std::remove_if(tab.links.begin(), tab.links.end(), [&](const EditorTab::Link& link) {
+                    return link.to_node == port_node_id && link.to_port == port_index;
+                }), tab.links.end());
+            }
+        } else {
+            int link_index = hit_test_link(mouse_pos);
+            if (link_index >= 0) {
+                tab.links.erase(tab.links.begin() + link_index);
+            }
+        }
+    }
+
+    if (tab.dragging_node_id != 0 && ImGui::IsMouseDown(ImGuiMouseButton_Left) && !space_down) {
+        if (auto node = find_node_by_id(tab.dragging_node_id)) {
+            ImVec2 new_screen = ImVec2(mouse_pos.x - tab.dragging_node_offset.x, mouse_pos.y - tab.dragging_node_offset.y);
+            node->pos = screen_to_canvas(new_screen);
+        }
+    }
+    if (tab.dragging_node_id != 0 && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        tab.dragging_node_id = 0;
+    }
+
+    if (tab.linking && ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+        float port_radius = 0.6f * font_size * 0.5f;
+        auto [port_node_id, port_index, is_output] = hit_test_port(mouse_pos, port_radius);
+        if (port_node_id != 0 && !is_output && tab.link_from_node_id != 0 && tab.link_from_port >= 0) {
+            tab.links.erase(std::remove_if(tab.links.begin(), tab.links.end(), [&](const EditorTab::Link& link) {
+                return link.to_node == port_node_id && link.to_port == port_index;
+            }), tab.links.end());
+
+            EditorTab::Link link;
+            link.from_node = tab.link_from_node_id;
+            link.from_port = tab.link_from_port;
+            link.to_node = port_node_id;
+            link.to_port = port_index;
+            tab.links.push_back(link);
+        }
+        tab.linking = false;
+        tab.link_from_node_id = 0;
+        tab.link_from_port = -1;
+    }
+
+    if (allow_input && ImGui::IsKeyPressed(ImGuiKey_Delete) && tab.selected_node_id != 0) {
+        int node_id = tab.selected_node_id;
+        tab.links.erase(std::remove_if(tab.links.begin(), tab.links.end(), [&](const EditorTab::Link& link) {
+            return link.from_node == node_id || link.to_node == node_id;
+        }), tab.links.end());
+        tab.nodes.erase(std::remove_if(tab.nodes.begin(), tab.nodes.end(), [&](const EditorTab::Node& node) {
+            return node.id == node_id;
+        }), tab.nodes.end());
+        tab.selected_node_id = 0;
+        tab.dragging_node_id = 0;
+        tab.linking = false;
+        tab.link_from_node_id = 0;
+        tab.link_from_port = -1;
     }
 
     if (!std::isfinite(tab.node_canvas_pan.x) || !std::isfinite(tab.node_canvas_pan.y) ||
@@ -357,18 +654,116 @@ void DrawNodeEditorCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab
         }
     }
 
-    ImU32 node_bg = ImGui::GetColorU32(colors.editor_node_overlay_bg);
-    ImU32 node_border = ImGui::GetColorU32(colors.editor_node_grid_major);
-    ImU32 node_text = ImGui::GetColorU32(colors.editor_node_overlay_text);
+    ImU32 node_body = IM_COL32(0, 0, 0, 191);
+    ImU32 node_head = IM_COL32(26, 38, 77, 255);
+    ImU32 node_line = IM_COL32(106, 4, 15, 191);
+    ImU32 node_outline = IM_COL32(51, 77, 153, 255);
+    ImU32 node_outline_active = IM_COL32(80, 120, 220, 255);
+    ImU32 node_text = IM_COL32(255, 255, 255, 255);
+    ImU32 link_col = IM_COL32(255, 255, 255, 255);
+    ImU32 port_bg = IM_COL32(0, 117, 99, 255);
+    ImU32 port_ring = IM_COL32(87, 168, 196, 255);
+    ImU32 port_inner = IM_COL32(255, 255, 255, 255);
+    ImU32 port_active = IM_COL32(254, 110, 0, 255);
     const float title_pad = 6.0f;
-    for (const auto& node : tab.nodes) {
+
+    float hover_port_radius = 0.6f * font_size * 0.5f;
+    auto [hover_port_node, hover_port_index, hover_is_output] = hit_test_port(mouse_pos, hover_port_radius);
+
+    for (const auto& link : tab.links) {
+        const EditorTab::Node* from_node = nullptr;
+        const EditorTab::Node* to_node = nullptr;
+        for (const auto& node : tab.nodes) {
+            if (node.id == link.from_node) {
+                from_node = &node;
+            }
+            if (node.id == link.to_node) {
+                to_node = &node;
+            }
+        }
+        if (!from_node || !to_node) {
+            continue;
+        }
+        if (link.from_port < 0 || link.from_port >= static_cast<int>(from_node->outputs.size()) ||
+            link.to_port < 0 || link.to_port >= static_cast<int>(to_node->inputs.size())) {
+            continue;
+        }
+        float link_font_size = ImGui::GetFontSize() * tab.node_canvas_zoom;
+        float port_radius = 0.6f * link_font_size * 0.5f;
+        ImVec2 p1 = port_center_screen(*from_node, true, link.from_port, port_radius);
+        ImVec2 p4 = port_center_screen(*to_node, false, link.to_port, port_radius);
+        float dx = std::abs(p4.x - p1.x) * 0.5f;
+        ImVec2 p2 = ImVec2(p1.x + dx, p1.y);
+        ImVec2 p3 = ImVec2(p4.x - dx, p4.y);
+        draw_list->AddBezierCubic(p1, p2, p3, p4, link_col, 2.0f);
+    }
+
+    if (tab.linking && tab.link_from_node_id != 0 && tab.link_from_port >= 0) {
+        if (auto from_node = find_node_by_id(tab.link_from_node_id)) {
+            if (tab.link_from_port < static_cast<int>(from_node->outputs.size())) {
+                float font_size = ImGui::GetFontSize() * tab.node_canvas_zoom;
+                float port_radius = 0.6f * font_size * 0.5f;
+                ImVec2 p1 = port_center_screen(*from_node, true, tab.link_from_port, port_radius);
+                ImVec2 p4 = mouse_pos;
+                float dx = std::abs(p4.x - p1.x) * 0.5f;
+                ImVec2 p2 = ImVec2(p1.x + dx, p1.y);
+                ImVec2 p3 = ImVec2(p4.x - dx, p4.y);
+                draw_list->AddBezierCubic(p1, p2, p3, p4, link_col, 2.0f);
+            }
+        }
+    }
+
+    ImGui::SetWindowFontScale(tab.node_canvas_zoom);
+    for (auto& node : tab.nodes) {
+        float port_thickness = 0.1f * font_size;
+
         ImVec2 node_pos = canvas_to_screen(node.pos);
         ImVec2 node_size = ImVec2(node.size.x * tab.node_canvas_zoom, node.size.y * tab.node_canvas_zoom);
         ImVec2 node_max = ImVec2(node_pos.x + node_size.x, node_pos.y + node_size.y);
-        draw_list->AddRectFilled(node_pos, node_max, node_bg, sizes.editor_node_overlay_rounding);
-        draw_list->AddRect(node_pos, node_max, node_border, sizes.editor_node_overlay_rounding, 0, 1.0f);
-        draw_list->AddText(ImVec2(node_pos.x + title_pad, node_pos.y + title_pad), node_text, node.title.c_str());
+        float rounding = title_h * 0.3f;
+
+        draw_list->AddRectFilled(node_pos, node_max, node_body, rounding);
+        ImVec2 head_br = ImVec2(node_max.x, node_pos.y + title_h);
+        draw_list->AddRectFilled(node_pos, head_br, node_head, rounding);
+        draw_list->AddLine(ImVec2(node_pos.x, head_br.y), ImVec2(head_br.x - 1.0f, head_br.y), node_line, 2.0f);
+
+        bool selected = (node.id == tab.selected_node_id);
+        draw_list->AddRect(node_pos, node_max, selected ? node_outline_active : node_outline, rounding, 0, selected ? 2.0f : 1.5f);
+
+        ImVec2 text_pos = ImVec2(node_pos.x + title_pad * tab.node_canvas_zoom, node_pos.y + title_pad * tab.node_canvas_zoom);
+        draw_list->AddText(ImVec2(text_pos.x + 2.0f, text_pos.y + 2.0f), IM_COL32(0, 0, 0, 255), node.title.c_str());
+        draw_list->AddText(text_pos, node_text, node.title.c_str());
+
+        for (int i = 0; i < static_cast<int>(node.inputs.size()); ++i) {
+            ImVec2 c = port_center_screen(node, false, i, port_radius);
+            bool connected = is_input_connected(node.id, i);
+            bool hovered = (hover_port_node == node.id && hover_port_index == i && !hover_is_output);
+            bool should_connect = tab.linking && hovered;
+            draw_list->AddCircleFilled(c, port_radius, port_bg, 0);
+            draw_list->AddCircle(c, port_radius, port_ring, 0, port_thickness);
+            if (connected) {
+                draw_list->AddCircleFilled(c, port_radius * 0.5f, port_inner, 0);
+            }
+            if (hovered || should_connect) {
+                draw_list->AddCircleFilled(c, port_radius * 0.8f, port_active, 0);
+            }
+        }
+        for (int i = 0; i < static_cast<int>(node.outputs.size()); ++i) {
+            ImVec2 c = port_center_screen(node, true, i, port_radius);
+            bool connected = is_output_connected(node.id, i);
+            bool hovered = (hover_port_node == node.id && hover_port_index == i && hover_is_output);
+            bool should_connect = tab.linking && hovered;
+            draw_list->AddCircleFilled(c, port_radius, port_bg, 0);
+            draw_list->AddCircle(c, port_radius, port_ring, 0, port_thickness);
+            if (connected) {
+                draw_list->AddCircleFilled(c, port_radius * 0.5f, port_inner, 0);
+            }
+            if (hovered || should_connect) {
+                draw_list->AddCircleFilled(c, port_radius * 0.8f, port_active, 0);
+            }
+        }
     }
+    ImGui::SetWindowFontScale(1.0f);
 
     draw_list->PopClipRect();
     ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, sizes.editor_node_overlay_rounding);

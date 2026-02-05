@@ -1,3 +1,10 @@
+/**
+ * @file fixed_layout.cpp
+ * @brief 固定布局管理的实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "fixed_layout.h"
 #include <iostream>
 

@@ -1,0 +1,37 @@
+# Doxygen configuration
+PROJECT_NAME           = "imgui_try-dev"
+PROJECT_BRIEF          = "开发工作区"
+OUTPUT_DIRECTORY       = dev/docs/api
+CREATE_SUBDIRS         = NO
+
+# Only document your code under dev/src
+INPUT                  = dev/src
+RECURSIVE              = YES
+FILE_PATTERNS          = *.h *.hpp *.cpp
+
+# Exclude generated/build folders just in case
+EXCLUDE                = dev/build build out
+EXCLUDE_PATTERNS       = */CMakeFiles/*
+
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+GENERATE_LATEX         = NO
+
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+HIDE_UNDOC_MEMBERS     = NO
+HIDE_UNDOC_CLASSES     = NO
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARN_IF_DOC_ERROR      = YES
+
+GENERATE_TREEVIEW      = YES
+FULL_SIDEBAR           = YES
+
+HAVE_DOT               = NO
+CALL_GRAPH             = NO
+CALLER_GRAPH           = NO
+
+OUTPUT_LANGUAGE        = Chinese

@@ -7,6 +7,8 @@ namespace UI {
 
 void RegisterDefaultViews(IViewRegistry& registry);
 
-ViewDefinition GetDefaultPrimaryView(ActivityBarItem item);
+ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item);
+ViewDefinition GetDefaultSecondaryView(SceneType mode);
+ViewDefinition GetDefaultPanelView(SceneType mode);
 
 } // namespace UI

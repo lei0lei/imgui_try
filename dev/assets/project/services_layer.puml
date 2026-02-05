@@ -1,0 +1,61 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "services.interfaces" {
+  interface IActivityBarService
+  interface IPrimarySidebarService
+  interface ISecondarySidebarService
+  interface IPanelService
+  interface IEditorAreaService
+  interface ITitleBarService
+  interface INotificationService
+  interface ILayoutService
+  interface IViewRegistry
+}
+
+package "services.impl" {
+  class ActivityBarService
+  class PrimarySidebarService
+  class SecondarySidebarService
+  class PanelService
+  class EditorAreaService
+  class TitleBarService
+  class NotificationService
+  class LayoutService
+  class ViewRegistry
+}
+
+package "models" {
+  class EditorTab
+  class LayoutState
+  class PanelState
+  class NotificationState
+  class ViewDefinition
+  enum ViewContainer
+  enum SceneType
+  enum PanelTab
+  enum ActivityBarItem
+  enum TitleBarMenu
+}
+
+IActivityBarService <|.. ActivityBarService
+IPrimarySidebarService <|.. PrimarySidebarService
+ISecondarySidebarService <|.. SecondarySidebarService
+IPanelService <|.. PanelService
+IEditorAreaService <|.. EditorAreaService
+ITitleBarService <|.. TitleBarService
+INotificationService <|.. NotificationService
+ILayoutService <|.. LayoutService
+IViewRegistry <|.. ViewRegistry
+
+EditorAreaService *-- "0..*" EditorTab
+LayoutService *-- LayoutState
+PanelService *-- PanelState
+NotificationService *-- NotificationState
+ViewRegistry *-- "0..*" ViewDefinition
+ViewRegistry ..> ViewContainer
+ViewRegistry ..> SceneType
+PanelService ..> PanelTab
+ActivityBarService ..> ActivityBarItem
+TitleBarService ..> TitleBarMenu
+@enduml

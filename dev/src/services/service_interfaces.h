@@ -102,6 +102,7 @@ public:
     virtual void AddTab(const EditorTab& tab) = 0;
     virtual void CloseTab(int index) = 0;
     virtual void ActivateTab(int index) = 0;
+    virtual void MoveTab(int from_index, int to_index) = 0;
 };
 
 class IViewRegistry {

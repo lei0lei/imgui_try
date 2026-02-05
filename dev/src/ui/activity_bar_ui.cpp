@@ -1,3 +1,10 @@
+/**
+ * @file activity_bar_ui.cpp
+ * @brief 活动栏组件的UI渲染
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "activity_bar_ui.h"
 #include "imgui.h"
 #include "../workbench/workbench_config.h"

@@ -1,3 +1,10 @@
+/**
+ * @file title_bar.cpp
+ * @brief 标题栏工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "title_bar.h"
  #include "../../ui/title_bar_ui.h"
 

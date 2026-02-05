@@ -1,3 +1,10 @@
+/**
+ * @file activity_bar_service.cpp
+ * @brief 活动栏服务的实现，用于管理侧边栏导航
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "activity_bar_service.h"
 
 ActivityBarService::ActivityBarService()

@@ -1,0 +1,29 @@
+name: Doxygen (dev only)
+
+on:
+  push:
+    paths:
+      - 'dev/src/**'
+      - 'dev/Doxyfile'
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Doxygen and Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Generate docs (dev only)
+        run: doxygen dev/Doxyfile
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-html
+          path: dev/docs/api/html

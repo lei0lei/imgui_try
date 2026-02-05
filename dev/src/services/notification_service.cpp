@@ -1,3 +1,10 @@
+/**
+ * @file notification_service.cpp
+ * @brief 通知服务的实现，用于状态消息和进度
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "notification_service.h"
 
 NotificationService::NotificationService() {

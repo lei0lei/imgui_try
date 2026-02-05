@@ -1,3 +1,10 @@
+/**
+ * @file primary_sidebar_service.cpp
+ * @brief 主侧边栏服务的实现，用于资源管理器和导航
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "primary_sidebar_service.h"
 
 PrimarySidebarService::PrimarySidebarService()

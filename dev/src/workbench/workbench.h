@@ -23,7 +23,9 @@ class Workbench {
 public:
     Workbench(SDL_Window* window);
     const WorkbenchMetrics& GetUiMetrics() const;
+    // 更新帧统计信息
     void UpdateFrameStats(float fps);
+    // 布局渲染
     void RenderActivityBar(const WorkbenchMetrics& metrics);
     void RenderTitleBar(const WorkbenchMetrics& metrics);
     void RenderStatusBar(const WorkbenchMetrics& metrics);

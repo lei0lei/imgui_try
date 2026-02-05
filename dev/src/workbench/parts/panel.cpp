@@ -1,4 +1,12 @@
- #include "panel.h"
+/**
+ * @file panel.cpp
+ * @brief 面板工作台部件实现
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
+#include "panel.h"
+#include "../../ui/view_registry_defaults.h"
 
 PanelPart::PanelPart(IPanelService& service)
 	: service_(service)
@@ -16,12 +24,52 @@ PanelPart::PanelPart(IPanelService& service)
  {
 	 PanelViewModel vm{};
 	 vm.views = &view_registry.GetViews(mode, ViewContainer::Panel);
-	 vm.active_index = view_registry.GetActiveViewIndex(mode, ViewContainer::Panel);
-	 vm.on_select_tab = [&view_registry, mode](int index) {
-		 view_registry.SetActiveViewIndex(mode, ViewContainer::Panel, index);
+	 const auto& views = view_registry.GetViews(mode, ViewContainer::Panel);
+	 auto find_view_by_id = [&](const std::string& id) -> const ViewDefinition* {
+		 for (const auto& view : views) {
+			 if (view.id == id) {
+				 return &view;
+			 }
+		 }
+		 return nullptr;
 	 };
-	 vm.active_view = view_registry.GetActiveView(mode, ViewContainer::Panel);
+	 auto find_index_by_id = [&](const std::string& id) -> int {
+		 for (int i = 0; i < static_cast<int>(views.size()); ++i) {
+			 if (views[i].id == id) {
+				 return i;
+			 }
+		 }
+		 return -1;
+	 };
+
+	 const ViewDefinition* active_view = nullptr;
+	 int active_index = -1;
+	 if (active_tab && !active_tab->panel_active_view_id.empty()) {
+		 active_index = find_index_by_id(active_tab->panel_active_view_id);
+		 active_view = (active_index >= 0) ? &views[active_index] : nullptr;
+	 }
+	 if (!active_view || !active_view->renderer) {
+		 const ViewDefinition def = UI::GetDefaultPanelView(mode);
+		 if (def.renderer) {
+			 active_view = find_view_by_id(def.id);
+			 active_index = find_index_by_id(def.id);
+			 if (active_tab && active_view) {
+				 active_tab->panel_active_view_id = active_view->id;
+			 }
+		 }
+	 }
+	 vm.active_index = (active_index >= 0) ? active_index : 0;
+	 vm.on_select_tab = [active_tab, &views](int index) {
+		 if (!active_tab) {
+			 return;
+		 }
+		 if (index >= 0 && index < static_cast<int>(views.size())) {
+			 active_tab->panel_active_view_id = views[index].id;
+		 }
+	 };
+	 vm.active_view = active_view;
 	 vm.has_active_tab = (active_tab != nullptr);
+	 vm.show_tabs = views.size() > 1;
 	 return DrawPanelUI(left_offset, right_offset, status_bar_h, panel_h, vm, active_tab);
  }
 

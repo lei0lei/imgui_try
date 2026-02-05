@@ -1,3 +1,10 @@
+/**
+ * @file editor_scene_registry.cpp
+ * @brief 编辑器场景渲染器的注册表
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "editor_scene_registry.h"
 
 namespace UI {

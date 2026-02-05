@@ -1,3 +1,10 @@
+/**
+ * @file editor_area_service.cpp
+ * @brief 编辑器区域服务的实现，用于管理打开的文件和标签
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "editor_area_service.h"
 
 int EditorAreaService::GetActiveTabIndex() const {
@@ -47,6 +54,15 @@ void EditorAreaService::ActivateTab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) return;
     for (auto& t : tabs_) t.active = false;
     tabs_[index].active = true;
+}
+
+void EditorAreaService::MoveTab(int from_index, int to_index) {
+    if (from_index < 0 || to_index < 0) return;
+    if (from_index >= static_cast<int>(tabs_.size()) || to_index >= static_cast<int>(tabs_.size())) return;
+    if (from_index == to_index) return;
+    EditorTab moved = tabs_[from_index];
+    tabs_.erase(tabs_.begin() + from_index);
+    tabs_.insert(tabs_.begin() + to_index, std::move(moved));
 }
 
 void EditorAreaService::CloseActiveTab() {

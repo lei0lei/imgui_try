@@ -60,6 +60,7 @@ endif()
 
 # 包含目录
 include_directories(${LUA_SOURCE_DIR}/include)
+include_directories(${LUA_SOURCE_DIR}/src)
 
 # 链接库
 list(APPEND EXTRA_LIBRARIES ${LUA_LIBRARY})
@@ -68,6 +69,7 @@ list(APPEND EXTRA_LIBRARIES ${LUA_LIBRARY})
 # 自动收集所有 cpp 文件，减少维护负担
 file(GLOB SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/services/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/command/*.cpp"
@@ -102,3 +104,40 @@ add_custom_command(TARGET example_sdl3_vulkan POST_BUILD
     $<TARGET_FILE_DIR:example_sdl3_vulkan>
     COMMENT "Copying SDL3.dll to output directory"
 )
+
+# 生成 Doxygen 文档
+# 设置 Doxygen 可执行文件路径（如果不在 PATH 中）
+set(DOXYGEN_EXECUTABLE "D:/doxygen/bin/doxygen.exe")
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    # 设置 Doxygen 配置
+    set(DOXYGEN_PROJECT_NAME "imgui_try-dev")
+    set(DOXYGEN_PROJECT_BRIEF "开发工作区")
+    set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/docs")
+    set(DOXYGEN_INPUT "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_FILE_PATTERNS "*.h *.hpp *.cpp")
+    set(DOXYGEN_EXCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/build")
+    set(DOXYGEN_GENERATE_HTML YES)
+    set(DOXYGEN_HTML_OUTPUT "html")
+    set(DOXYGEN_GENERATE_LATEX NO)
+    set(DOXYGEN_OUTPUT_LANGUAGE Chinese)
+    set(DOXYGEN_QUIET YES)
+    set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+    set(DOXYGEN_WARN_IF_DOC_ERROR YES)
+    set(DOXYGEN_GENERATE_TREEVIEW YES)
+    set(DOXYGEN_FULL_SIDEBAR YES)
+    set(DOXYGEN_HAVE_DOT NO)
+
+    # 创建 docs 目标
+    doxygen_add_docs(docs
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        COMMENT "Generating API documentation with Doxygen"
+    )
+
+    # 可选：在构建后自动生成文档
+    # add_dependencies(example_sdl3_vulkan docs)
+else()
+    message(WARNING "Doxygen not found. Documentation will not be generated.")
+endif()

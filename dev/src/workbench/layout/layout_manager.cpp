@@ -1,3 +1,10 @@
+/**
+ * @file layout_manager.cpp
+ * @brief 布局管理器，用于计算工作台组件位置
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
  #include "layout_manager.h"
 
 LayoutInfo LayoutManager::Calculate(const WorkbenchMetrics& metrics, const LayoutState& state) const

@@ -7,7 +7,7 @@
  public:
 	explicit ActivityBarPart(IActivityBarService& service);
 
-	 ActivityBarResult Render(float title_h, float status_bar_h, float width);
+	ActivityBarResult Render(float title_h, float status_bar_h, float width);
 
 	IActivityBarService& GetService();
 	const IActivityBarService& GetService() const;

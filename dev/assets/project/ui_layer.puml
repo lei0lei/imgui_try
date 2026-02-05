@@ -1,0 +1,51 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package "workbench.parts" {
+  class TitleBarPart
+  class StatusBarPart
+  class ActivityBarPart
+  class PrimarySidebarPart
+  class SecondarySidebarPart
+  class PanelPart
+  class EditorAreaPart
+}
+
+package "ui" {
+  class "DrawActivityBarUI" as DrawActivityBarUI
+  class "DrawPrimarySidebarUI" as DrawPrimarySidebarUI
+  class "DrawSecondarySidebarUI" as DrawSecondarySidebarUI
+  class "DrawPanelUI" as DrawPanelUI
+  class "UI::EditorArea" as EditorArea
+  class "UI::EditorSceneRegistry" as EditorSceneRegistry
+}
+
+package "services" {
+  interface IActivityBarService
+  interface IPrimarySidebarService
+  interface ISecondarySidebarService
+  interface IPanelService
+  interface IEditorAreaService
+  interface IViewRegistry
+}
+
+ActivityBarPart --> IActivityBarService
+ActivityBarPart --> DrawActivityBarUI
+
+PrimarySidebarPart --> IPrimarySidebarService
+PrimarySidebarPart --> IViewRegistry
+PrimarySidebarPart --> DrawPrimarySidebarUI
+
+SecondarySidebarPart --> ISecondarySidebarService
+SecondarySidebarPart --> IViewRegistry
+SecondarySidebarPart --> DrawSecondarySidebarUI
+
+PanelPart --> IPanelService
+PanelPart --> IViewRegistry
+PanelPart --> DrawPanelUI
+
+EditorAreaPart --> IEditorAreaService
+EditorAreaPart --> EditorArea
+
+EditorArea *-- EditorSceneRegistry
+@enduml

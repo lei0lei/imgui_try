@@ -1,3 +1,9 @@
+/**
+ * @file title_bar_ui.cpp
+ * @brief 标题栏的UI渲染，包含窗口控件
+ * @author Your Name
+ * @date 2026-02-05
+ */
 
 #include "title_bar_ui.h"
 #include "../workbench/workbench_config.h"

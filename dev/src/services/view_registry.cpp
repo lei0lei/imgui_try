@@ -1,3 +1,10 @@
+/**
+ * @file view_registry.cpp
+ * @brief 视图注册表的实现，用于管理UI组件
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "view_registry.h"
 #include <algorithm>
 

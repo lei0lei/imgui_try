@@ -1,3 +1,10 @@
+/**
+ * @file status_bar_service.cpp
+ * @brief 状态栏服务的实现，用于底部状态信息
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "status_bar_service.h"
 
 StatusBarService::StatusBarService() {

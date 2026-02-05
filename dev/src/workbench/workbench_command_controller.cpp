@@ -1,3 +1,10 @@
+/**
+ * @file workbench_command_controller.cpp
+ * @brief 工作台专用命令的命令控制器
+ * @author Your Name
+ * @date 2026-02-05
+ */
+
 #include "workbench_command_controller.h"
 #include "../command/command_handlers.h"
 #include "../services/editor_area_service.h"
