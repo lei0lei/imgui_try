@@ -8,20 +8,17 @@
 #include "editor_area_service.h"
 
 int EditorAreaService::GetActiveTabIndex() const {
-    for (size_t i = 0; i < tabs_.size(); ++i) {
-        if (tabs_[i].active) return static_cast<int>(i);
-    }
-    return -1;
+    return active_tab_index_;
 }
 
 EditorTab* EditorAreaService::GetActiveTab() {
-    int idx = GetActiveTabIndex();
+    const int idx = active_tab_index_;
     if (idx < 0 || idx >= static_cast<int>(tabs_.size())) return nullptr;
     return &tabs_[idx];
 }
 
 const EditorTab* EditorAreaService::GetActiveTab() const {
-    int idx = GetActiveTabIndex();
+    const int idx = active_tab_index_;
     if (idx < 0 || idx >= static_cast<int>(tabs_.size())) return nullptr;
     return &tabs_[idx];
 }
@@ -35,18 +32,31 @@ SceneType EditorAreaService::GetActiveSceneType(SceneType fallback) const {
 void EditorAreaService::AddTab(const EditorTab& tab) {
     for (auto& t : tabs_) t.active = false;
     tabs_.push_back(tab);
-    tabs_.back().active = true;
+    active_tab_index_ = static_cast<int>(tabs_.size()) - 1;
+    tabs_[active_tab_index_].active = true;
 }
 
 void EditorAreaService::CloseTab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) return;
-    bool was_active = tabs_[index].active;
+    const bool was_active = tabs_[index].active;
     tabs_.erase(tabs_.begin() + index);
-    if (was_active && !tabs_.empty()) {
+
+    if (tabs_.empty()) {
+        active_tab_index_ = -1;
+        return;
+    }
+
+    if (was_active) {
         int new_active = index;
         if (new_active >= static_cast<int>(tabs_.size())) new_active = static_cast<int>(tabs_.size()) - 1;
         for (auto& t : tabs_) t.active = false;
         tabs_[new_active].active = true;
+        active_tab_index_ = new_active;
+        return;
+    }
+
+    if (active_tab_index_ > index) {
+        --active_tab_index_;
     }
 }
 
@@ -54,6 +64,7 @@ void EditorAreaService::ActivateTab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) return;
     for (auto& t : tabs_) t.active = false;
     tabs_[index].active = true;
+    active_tab_index_ = index;
 }
 
 void EditorAreaService::MoveTab(int from_index, int to_index) {
@@ -63,9 +74,40 @@ void EditorAreaService::MoveTab(int from_index, int to_index) {
     EditorTab moved = tabs_[from_index];
     tabs_.erase(tabs_.begin() + from_index);
     tabs_.insert(tabs_.begin() + to_index, std::move(moved));
+
+    if (active_tab_index_ == from_index) {
+        active_tab_index_ = to_index;
+    } else if (from_index < active_tab_index_ && active_tab_index_ <= to_index) {
+        --active_tab_index_;
+    } else if (to_index <= active_tab_index_ && active_tab_index_ < from_index) {
+        ++active_tab_index_;
+    }
 }
 
 void EditorAreaService::CloseActiveTab() {
-    int idx = GetActiveTabIndex();
+    int idx = active_tab_index_;
     if (idx >= 0) CloseTab(idx);
+}
+
+void EditorAreaService::SetTabs(const std::vector<EditorTab>& tabs) {
+    tabs_ = tabs;
+    RebuildActiveTabIndex();
+}
+
+void EditorAreaService::RebuildActiveTabIndex() {
+    active_tab_index_ = -1;
+    for (size_t i = 0; i < tabs_.size(); ++i) {
+        if (tabs_[i].active) {
+            active_tab_index_ = static_cast<int>(i);
+            break;
+        }
+    }
+
+    if (active_tab_index_ < 0 && !tabs_.empty()) {
+        active_tab_index_ = 0;
+    }
+
+    for (size_t i = 0; i < tabs_.size(); ++i) {
+        tabs_[i].active = (static_cast<int>(i) == active_tab_index_);
+    }
 }

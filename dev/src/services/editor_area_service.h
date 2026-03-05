@@ -90,7 +90,10 @@ public:
     void ActivateTab(int index) override;
     void MoveTab(int from_index, int to_index) override;
     void CloseActiveTab();
-    void SetTabs(const std::vector<EditorTab>& tabs) { tabs_ = tabs; }
+    void SetTabs(const std::vector<EditorTab>& tabs);
 private:
+    void RebuildActiveTabIndex();
+
     std::vector<EditorTab> tabs_;
+    int active_tab_index_ = -1;
 };

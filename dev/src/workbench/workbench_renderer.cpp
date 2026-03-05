@@ -10,6 +10,20 @@
 #include "../workbench/workbench_config.h"
 #include "imgui.h"
 
+namespace {
+const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
+{
+    switch (item) {
+        case ActivityBarItem::Explorer: return "explorer";
+        case ActivityBarItem::Search: return "search";
+        case ActivityBarItem::NodeEditor: return "node";
+        case ActivityBarItem::Debug: return "debug";
+        case ActivityBarItem::Extensions: return "extensions";
+        default: return nullptr;
+    }
+}
+}
+
 WorkbenchRenderer::WorkbenchRenderer(ServiceCollection& services,
                                      TitleBarPart& title_bar_part,
                                      StatusBarPart& status_bar_part,
@@ -35,6 +49,8 @@ WorkbenchRenderer::WorkbenchRenderer(ServiceCollection& services,
 {
     last_sidebar_visible_ = services_.GetLayoutService().IsPrimarySidebarVisible();
     last_activity_item_ = (ActivityBarItem)services_.GetActivityBarService().GetSelectedItem();
+    last_active_tab_index_ = services_.GetEditorAreaService().GetActiveTabIndex();
+    has_active_tab_index_ = true;
 }
 
 LayoutInfo WorkbenchRenderer::ComputeLayout(const WorkbenchMetrics& metrics) const
@@ -80,6 +96,7 @@ void WorkbenchRenderer::RenderPrimarySidebar(const WorkbenchMetrics& metrics)
 
 void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
 {
+    const int active_tab_index_before = services_.GetEditorAreaService().GetActiveTabIndex();
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
     bool panel_visible = active_tab ? active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
     if (!active_tab && !command_controller_.AllowPanelWithoutEditor()) {
@@ -96,6 +113,26 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
         panel_visible,
         block_tab_clicks
     );
+
+    const int active_tab_index_after = services_.GetEditorAreaService().GetActiveTabIndex();
+    if (active_tab_index_after != active_tab_index_before) {
+        const LayoutInfo updated_layout = ComputeLayout(metrics);
+        EditorTab* updated_active_tab = services_.GetEditorAreaService().GetActiveTab();
+        bool updated_panel_visible = updated_active_tab ? updated_active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
+        if (!updated_active_tab && !command_controller_.AllowPanelWithoutEditor()) {
+            updated_panel_visible = false;
+        }
+
+        RenderEditorArea(
+            updated_layout.left_offset,
+            updated_layout.right_offset,
+            metrics.title_h,
+            metrics.status_bar_h,
+            metrics.panel_h,
+            updated_panel_visible,
+            true
+        );
+    }
 }
 
 void WorkbenchRenderer::RenderPanel(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
@@ -111,6 +148,8 @@ void WorkbenchRenderer::RenderSecondarySidebar(const WorkbenchMetrics& metrics, 
 void WorkbenchRenderer::RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before)
 {
     LayoutInfo layout_after = ComputeLayout(metrics);
+    const int current_active_tab_index = services_.GetEditorAreaService().GetActiveTabIndex();
+    const bool active_tab_switched = has_active_tab_index_ && (current_active_tab_index != last_active_tab_index_);
     {
         ImGuiIO& io = ImGui::GetIO();
         const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
@@ -119,14 +158,14 @@ void WorkbenchRenderer::RenderPanelAndSecondary(const WorkbenchMetrics& metrics,
         float top = metrics.title_h;
         float bottom = io.DisplaySize.y - metrics.status_bar_h;
 
-        if (layout_after.right_offset < layout_before.right_offset)
+        if (!active_tab_switched && layout_after.right_offset < layout_before.right_offset)
         {
             float x0 = io.DisplaySize.x - layout_before.right_offset;
             float x1 = io.DisplaySize.x - layout_after.right_offset;
             bg->AddRectFilled(ImVec2(x0, top), ImVec2(x1, bottom), ImGui::GetColorU32(colors.editor_welcome_bg));
         }
 
-        if (layout_after.secondary_panel_h < layout_before.secondary_panel_h)
+        if (!active_tab_switched && layout_after.secondary_panel_h < layout_before.secondary_panel_h)
         {
             float old_bottom = io.DisplaySize.y - metrics.status_bar_h - layout_before.secondary_panel_h;
             float new_bottom = io.DisplaySize.y - metrics.status_bar_h - layout_after.secondary_panel_h;
@@ -138,6 +177,9 @@ void WorkbenchRenderer::RenderPanelAndSecondary(const WorkbenchMetrics& metrics,
 
     RenderPanel(metrics, layout_after);
     RenderSecondarySidebar(metrics, layout_after);
+
+    last_active_tab_index_ = current_active_tab_index;
+    has_active_tab_index_ = true;
 }
 
 void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w)
@@ -165,24 +207,16 @@ void WorkbenchRenderer::RenderPrimarySidebar(float activity_bar_w, float title_h
     SceneType mode = services_.GetEditorAreaService().GetActiveSceneType(SceneType::Scene3D);
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
     ActivityBarItem active_item = (ActivityBarItem)activity_bar_part_.GetService().GetSelectedItem();
-    switch (active_item) {
-        case ActivityBarItem::Explorer:
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "explorer");
-            break;
-        case ActivityBarItem::Search:
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "search");
-            break;
-        case ActivityBarItem::NodeEditor:
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "node");
-            break;
-        case ActivityBarItem::Debug:
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "debug");
-            break;
-        case ActivityBarItem::Extensions:
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, "extensions");
-            break;
-        default:
-            break;
+    const bool selection_changed = !has_primary_view_selection_
+        || last_primary_view_item_ != active_item
+        || last_primary_view_scene_ != mode;
+    if (selection_changed) {
+        if (const char* view_id = PrimarySidebarViewIdForItem(active_item)) {
+            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, view_id);
+        }
+        last_primary_view_item_ = active_item;
+        last_primary_view_scene_ = mode;
+        has_primary_view_selection_ = true;
     }
     primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), mode, active_tab, active_item);
 }

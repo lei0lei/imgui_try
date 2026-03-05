@@ -3,6 +3,7 @@
 #include <array>
 #include <functional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include "editor_area_service.h"
 #include "service_interfaces.h"
@@ -36,4 +37,5 @@ private:
 
     std::array<std::array<std::vector<ViewDefinition>, 3>, 3> views_{};
     std::array<std::array<int, 3>, 3> active_indices_{};
+    std::array<std::array<std::unordered_map<std::string, int>, 3>, 3> id_to_index_{};
 };

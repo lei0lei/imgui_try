@@ -42,7 +42,9 @@ void ViewRegistry::RegisterView(SceneType mode, ViewContainer container, const V
 {
     const int s = SceneIndex(mode);
     const int c = ContainerIndex(container);
+    const int index = static_cast<int>(views_[s][c].size());
     views_[s][c].push_back(view);
+    id_to_index_[s][c][view.id] = index;
     if (active_indices_[s][c] <= 0) {
         active_indices_[s][c] = 0;
     }
@@ -76,12 +78,9 @@ void ViewRegistry::SetActiveViewById(SceneType mode, ViewContainer container, co
 {
     const int s = SceneIndex(mode);
     const int c = ContainerIndex(container);
-    const auto& list = views_[s][c];
-    for (size_t i = 0; i < list.size(); ++i) {
-        if (list[i].id == id) {
-            active_indices_[s][c] = static_cast<int>(i);
-            return;
-        }
+    const auto it = id_to_index_[s][c].find(id);
+    if (it != id_to_index_[s][c].end()) {
+        active_indices_[s][c] = it->second;
     }
 }
 
