@@ -101,6 +101,7 @@ target_include_directories(example_sdl3_vulkan PRIVATE
 if(IMGUITRY_USE_VOLK)
     target_compile_definitions(example_sdl3_vulkan PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
     target_include_directories(example_sdl3_vulkan PRIVATE ${IMGUITRY_VOLK_SOURCE_DIR})
+    target_link_libraries(example_sdl3_vulkan volk)
 endif()
 
 # 链接库

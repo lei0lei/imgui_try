@@ -40,7 +40,6 @@
 
 // Volk headers
 #ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-#define VOLK_IMPLEMENTATION
 #include <volk.h>
 #endif
 
