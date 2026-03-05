@@ -110,10 +110,6 @@ target_link_libraries(example_sdl3_vulkan
     ${EXTRA_LIBRARIES} # 添加 Lua 库
 )
 
-if(IMGUITRY_USE_VOLK)
-    target_link_libraries(example_sdl3_vulkan volk)
-endif()
-
 # Windows 特定：隐藏控制台窗口
 if(WIN32)
     target_link_options(example_sdl3_vulkan PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
