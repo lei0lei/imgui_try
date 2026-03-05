@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(example_sdl3_vulkan)
 
+option(IMGUITRY_USE_VOLK "Use volk as Vulkan function loader" OFF)
+set(IMGUITRY_VOLK_SOURCE_DIR "D:/github/volk" CACHE PATH "Path to volk source directory")
+
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 
@@ -30,6 +33,16 @@ endif()
 
 # 查找 Vulkan
 find_package(Vulkan REQUIRED)
+
+if(IMGUITRY_USE_VOLK)
+    if(EXISTS "${IMGUITRY_VOLK_SOURCE_DIR}/CMakeLists.txt")
+        message(STATUS "Building volk from source: ${IMGUITRY_VOLK_SOURCE_DIR}")
+        set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
+        add_subdirectory(${IMGUITRY_VOLK_SOURCE_DIR} ${CMAKE_BINARY_DIR}/volk EXCLUDE_FROM_ALL)
+    else()
+        message(FATAL_ERROR "volk source not found at ${IMGUITRY_VOLK_SOURCE_DIR}")
+    endif()
+endif()
 
 # ImGui 源文件（dev 文件夹在项目根目录，所以返回上一级）
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/..)
@@ -85,12 +98,21 @@ target_include_directories(example_sdl3_vulkan PRIVATE
     ${Vulkan_INCLUDE_DIRS}
 )
 
+if(IMGUITRY_USE_VOLK)
+    target_compile_definitions(example_sdl3_vulkan PRIVATE IMGUI_IMPL_VULKAN_USE_VOLK)
+    target_include_directories(example_sdl3_vulkan PRIVATE ${IMGUITRY_VOLK_SOURCE_DIR})
+endif()
+
 # 链接库
 target_link_libraries(example_sdl3_vulkan
     ${SDL3_LIBRARY}
     ${Vulkan_LIBRARIES}
     ${EXTRA_LIBRARIES} # 添加 Lua 库
 )
+
+if(IMGUITRY_USE_VOLK)
+    target_link_libraries(example_sdl3_vulkan volk)
+endif()
 
 # Windows 特定：隐藏控制台窗口
 if(WIN32)
