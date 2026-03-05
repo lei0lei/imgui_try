@@ -8,6 +8,7 @@
 #include "activity_bar_ui.h"
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
+#include <cmath>
 
 ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model)
 {
@@ -122,6 +123,52 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
         }
         item_y += item_size + sizes.activity_bar_item_spacing;
     }
+
+    float window_height = ImGui::GetWindowSize().y;
+    ImVec2 settings_min = ImVec2(window_pos.x, window_pos.y + window_height - sizes.activity_bar_padding_y - item_size);
+    ImVec2 settings_max = ImVec2(window_pos.x + width, settings_min.y + item_size);
+    ImVec2 mouse_pos = ImGui::GetMousePos();
+    bool settings_hovered = (mouse_pos.x >= settings_min.x && mouse_pos.x <= settings_max.x && mouse_pos.y >= settings_min.y && mouse_pos.y <= settings_max.y);
+
+    if (settings_hovered) {
+        draw_list->AddRectFilled(settings_min, settings_max, ImGui::GetColorU32(hover_color));
+    }
+
+    ImVec2 settings_center = ImVec2(settings_min.x + width * 0.5f, settings_min.y + item_size * 0.5f);
+    float settings_icon_size = sizes.activity_bar_icon_size;
+    ImU32 settings_icon_col = ImGui::GetColorU32(icon_color);
+    float gear_outer_r = settings_icon_size * 0.34f;
+    float gear_inner_r = settings_icon_size * 0.13f;
+    float tooth_inner_r = gear_outer_r * 0.90f;
+    float tooth_outer_r = gear_outer_r * 1.32f;
+    constexpr float kPi = 3.14159265358979323846f;
+    draw_list->AddCircle(settings_center, gear_outer_r, settings_icon_col, 24, sizes.activity_bar_icon_stroke);
+    draw_list->AddCircle(settings_center, gear_inner_r, settings_icon_col, 18, sizes.activity_bar_icon_stroke);
+    for (int spoke = 0; spoke < 8; ++spoke) {
+        float a = kPi * 0.25f * spoke;
+        float c = cosf(a);
+        float s = sinf(a);
+        ImVec2 p0 = ImVec2(settings_center.x + c * tooth_inner_r, settings_center.y + s * tooth_inner_r);
+        ImVec2 p1 = ImVec2(settings_center.x + c * tooth_outer_r, settings_center.y + s * tooth_outer_r);
+        draw_list->AddLine(p0, p1, settings_icon_col, sizes.activity_bar_icon_stroke);
+    }
+
+    if (settings_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        ImGui::OpenPopup("ActivityBarSettingsMenu");
+    }
+    if (settings_hovered) {
+        ImGui::SetTooltip("Settings");
+    }
+
+    ImGui::SetNextWindowPos(ImVec2(settings_max.x + 4.0f, settings_min.y), ImGuiCond_Appearing);
+    if (ImGui::BeginPopup("ActivityBarSettingsMenu")) {
+        ImGui::MenuItem("Workbench Settings", nullptr, false, false);
+        ImGui::Separator();
+        ImGui::MenuItem("Theme", nullptr, false, false);
+        ImGui::MenuItem("Keyboard Shortcuts", nullptr, false, false);
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
     ImGui::PopStyleVar(4);
     // 右边框
