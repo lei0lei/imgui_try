@@ -50,17 +50,23 @@
 static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
 #endif
 
-// Data
+// 全局 Vulkan状态变量
+// 内存分配回调，使用默认分配器（如果需要自定义分配器，可以设置g_Allocator并在vkCreateInstance时传入）
 static VkAllocationCallbacks*   g_Allocator = nullptr;
+// Vulkan实例和设备
 static VkInstance               g_Instance = VK_NULL_HANDLE;
+// 物理设备（GPU）和逻辑设备
 static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice                 g_Device = VK_NULL_HANDLE;
+// 用于图形命令的队列和队列族索引
 static uint32_t                 g_QueueFamily = (uint32_t)-1;
 static VkQueue                  g_Queue = VK_NULL_HANDLE;
+// Vulkan管道缓存和描述符池
 static VkPipelineCache          g_PipelineCache = VK_NULL_HANDLE;
 static VkDescriptorPool         g_DescriptorPool = VK_NULL_HANDLE;
-
+// 主窗口数据结构，包含交换链、渲染通道等
 static ImGui_ImplVulkanH_Window g_MainWindowData;
+// 最小交换链图像数量和交换链重建标志
 static uint32_t                 g_MinImageCount = 2;
 static bool                     g_SwapChainRebuild = false;
 
@@ -74,6 +80,7 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
+
 #ifdef APP_USE_VULKAN_DEBUG_REPORT
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
 {
@@ -83,6 +90,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, 
 }
 #endif // APP_USE_VULKAN_DEBUG_REPORT
 
+// 检查扩展是否可用
 static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension)
 {
     for (const VkExtensionProperties& p : properties)
@@ -91,6 +99,7 @@ static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properti
     return false;
 }
 
+// Vulkan初始化函数，创建实例、选择物理设备、创建逻辑设备和描述符池
 static void SetupVulkan(ImVector<const char*> instance_extensions)
 {
     VkResult err;
@@ -98,12 +107,13 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
     volkInitialize();
 #endif
 
-    // Create Vulkan Instance
+    // 创建 Vulkan实例
     {
         VkInstanceCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 
-        // Enumerate available extensions
+        // 枚举可用的扩展
+
         uint32_t properties_count;
         ImVector<VkExtensionProperties> properties;
         vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
@@ -111,7 +121,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.Data);
         check_vk_result(err);
 
-        // Enable required extensions
+        // 启用所需的扩展
         if (IsExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
             instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #ifdef VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
@@ -122,7 +132,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         }
 #endif
 
-        // Enabling validation layers
+        // 启用验证层
 #ifdef APP_USE_VULKAN_DEBUG_REPORT
         const char* layers[] = { "VK_LAYER_KHRONOS_validation" };
         create_info.enabledLayerCount = 1;
@@ -130,7 +140,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         instance_extensions.push_back("VK_EXT_debug_report");
 #endif
 
-        // Create Vulkan Instance
+        // 创建 Vulkan实例
         create_info.enabledExtensionCount = (uint32_t)instance_extensions.Size;
         create_info.ppEnabledExtensionNames = instance_extensions.Data;
         err = vkCreateInstance(&create_info, g_Allocator, &g_Instance);
@@ -139,7 +149,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         volkLoadInstance(g_Instance);
 #endif
 
-        // Setup the debug report callback
+        // 设置调试报告回调
 #ifdef APP_USE_VULKAN_DEBUG_REPORT
         auto f_vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkCreateDebugReportCallbackEXT");
         IM_ASSERT(f_vkCreateDebugReportCallbackEXT != nullptr);
@@ -153,20 +163,20 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
 #endif
     }
 
-    // Select Physical Device (GPU)
+    // 选择物理设备（GPU）
     g_PhysicalDevice = ImGui_ImplVulkanH_SelectPhysicalDevice(g_Instance);
     IM_ASSERT(g_PhysicalDevice != VK_NULL_HANDLE);
 
-    // Select graphics queue family
+    // 选择图形队列族
     g_QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(g_PhysicalDevice);
     IM_ASSERT(g_QueueFamily != (uint32_t)-1);
 
-    // Create Logical Device (with 1 queue)
+    // 创建逻辑设备（带1个队列）
     {
         ImVector<const char*> device_extensions;
         device_extensions.push_back("VK_KHR_swapchain");
 
-        // Enumerate physical device extension
+        // 枚举物理设备扩展
         uint32_t properties_count;
         ImVector<VkExtensionProperties> properties;
         vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, nullptr);
@@ -194,8 +204,8 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
     }
 
-    // Create Descriptor Pool
-    // If you wish to load e.g. additional textures you may need to alter pools sizes and maxSets.
+    // 创建描述符池
+    // 如果希望加载例如额外的纹理，你可能需要调整池的大小和最大集合数量。
     {
         VkDescriptorPoolSize pool_sizes[] =
         {
@@ -214,8 +224,6 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
     }
 }
 
-// All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
-// Your real engine/app may not use them.
 static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height)
 {
     // Check for WSI support
@@ -227,13 +235,13 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
         exit(-1);
     }
 
-    // Select Surface Format
+    // 选择表面格式
     const VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
     const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
     wd->Surface = surface;
     wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_COUNTOF(requestSurfaceImageFormat), requestSurfaceColorSpace);
 
-    // Select Present Mode
+    // 选择呈现模式
 #ifdef APP_USE_UNLIMITED_FRAME_RATE
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
 #else
@@ -242,7 +250,7 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
     wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_COUNTOF(present_modes));
     //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
 
-    // Create SwapChain, RenderPass, Framebuffer, etc.
+    // 创建交换链、渲染通道、帧缓冲等
     IM_ASSERT(g_MinImageCount >= 2);
     ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, g_QueueFamily, g_Allocator, width, height, g_MinImageCount, 0);
 }
@@ -252,7 +260,7 @@ static void CleanupVulkan()
     vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
 
 #ifdef APP_USE_VULKAN_DEBUG_REPORT
-    // Remove the debug report callback
+    // 移除调试报告回调
     auto f_vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkDestroyDebugReportCallbackEXT");
     f_vkDestroyDebugReportCallbackEXT(g_Instance, g_DebugReport, g_Allocator);
 #endif // APP_USE_VULKAN_DEBUG_REPORT
@@ -267,10 +275,20 @@ static void CleanupVulkanWindow(ImGui_ImplVulkanH_Window* wd)
     vkDestroySurfaceKHR(g_Instance, wd->Surface, g_Allocator);
 }
 
+// FrameRender: 为当前帧准备并提交命令以在交换链图像上绘制 ImGui 的 draw_data。
+// 主要步骤：
+// 1) 获取交换链下一张可写图像（vkAcquireNextImageKHR）并处理交换链重建情况。
+// 2) 使用该帧的同步对象（围栏、信号量）等待并重置上一帧的状态。
+// 3) 重置命令池并开始记录命令缓冲（一次性提交标志）。
+// 4) 开始渲染通道、记录 ImGui 的绘制命令并结束渲染通道。
+// 5) 提交命令缓冲到队列，使用信号量/围栏进行同步。
 static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 {
+    // 从当前帧集合取出用于同步的信号量
     VkSemaphore image_acquired_semaphore  = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
     VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
+
+    // 获取交换链下一张图像的索引。如果交换链过期或子最优，标记需要重建并在必要时返回。
     VkResult err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
     if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
         g_SwapChainRebuild = true;
@@ -279,15 +297,19 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
     if (err != VK_SUBOPTIMAL_KHR)
         check_vk_result(err);
 
+    // 用于记录和提交的当前帧数据（命令池/缓冲、围栏、帧缓冲等）
     ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];
     {
-        err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE, UINT64_MAX);    // wait indefinitely instead of periodically checking
+        // 等待上一提交的围栏，确保该帧资源可安全重用
+        err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE, UINT64_MAX);
         check_vk_result(err);
 
+        // 重置围栏以便下一次提交使用
         err = vkResetFences(g_Device, 1, &fd->Fence);
         check_vk_result(err);
     }
     {
+        // 重置命令池并开始记录命令缓冲（一次性提交）
         err = vkResetCommandPool(g_Device, fd->CommandPool, 0);
         check_vk_result(err);
         VkCommandBufferBeginInfo info = {};
@@ -297,6 +319,7 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
         check_vk_result(err);
     }
     {
+        // 开始渲染通道，绑定帧缓冲并设置清除值
         VkRenderPassBeginInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         info.renderPass = wd->RenderPass;
@@ -308,30 +331,31 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
         vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
     }
 
-    // Record dear imgui primitives into command buffer
+    // 将 ImGui 的绘制命令记录到命令缓冲中
     ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
 
-    // Submit command buffer
+    // 结束渲染通道并提交命令缓冲
     vkCmdEndRenderPass(fd->CommandBuffer);
     {
         VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         VkSubmitInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &image_acquired_semaphore;
+        info.pWaitSemaphores = &image_acquired_semaphore; // 等待图像可用
         info.pWaitDstStageMask = &wait_stage;
         info.commandBufferCount = 1;
         info.pCommandBuffers = &fd->CommandBuffer;
         info.signalSemaphoreCount = 1;
-        info.pSignalSemaphores = &render_complete_semaphore;
+        info.pSignalSemaphores = &render_complete_semaphore; // 渲染完成后发出信号
 
         err = vkEndCommandBuffer(fd->CommandBuffer);
         check_vk_result(err);
-        err = vkQueueSubmit(g_Queue, 1, &info, fd->Fence);
+        err = vkQueueSubmit(g_Queue, 1, &info, fd->Fence); // 提交并用围栏同步
         check_vk_result(err);
     }
 }
 
+// FramePresent: 提交交换链图像以显示在屏幕上，并处理交换链重建情况。
 static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 {
     if (g_SwapChainRebuild)
@@ -354,7 +378,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
     wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->SemaphoreCount; // Now we can use the next set of semaphores
 }
 
-// Main code
+// 主流程
 int main(int, char**)
 {
     // Setup SDL
@@ -364,7 +388,7 @@ int main(int, char**)
         printf("Error: SDL_Init(): %s\n", SDL_GetError());
         return 1;
     }
-    // Enable double buffering
+    // 启用OpenGL双缓冲（虽然我们使用Vulkan，但某些平台可能需要这个属性来正确处理窗口刷新）
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 
