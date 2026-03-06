@@ -7,8 +7,100 @@
 
 #include "activity_bar_ui.h"
 #include "imgui.h"
+#include "icon_texture_manager.h"
 #include "../workbench/workbench_config.h"
+#include <SDL3/SDL.h>
 #include <cmath>
+
+static ImTextureID g_activity_bar_icon_textures[6] = {
+    (ImTextureID)0,
+    (ImTextureID)0,
+    (ImTextureID)0,
+    (ImTextureID)0,
+    (ImTextureID)0,
+    (ImTextureID)0
+};
+static ImTextureID g_activity_bar_settings_texture = (ImTextureID)0;
+
+static int ToActivityBarIconIndex(ActivityBarItem item)
+{
+    const int index = static_cast<int>(item);
+    if (index <= 0 || index >= 6)
+        return 0;
+    return index;
+}
+
+void SetActivityBarIconTexture(ActivityBarItem item, ImTextureID texture_id)
+{
+    const int index = ToActivityBarIconIndex(item);
+    if (index != 0)
+        g_activity_bar_icon_textures[index] = texture_id;
+}
+
+void SetActivityBarSettingsIconTexture(ImTextureID texture_id)
+{
+    g_activity_bar_settings_texture = texture_id;
+}
+
+void ConfigureActivityBarIcons()
+{
+    struct ActivityIconBinding {
+        ActivityBarItem item;
+        const char* key;
+        const char* file_name;
+    };
+
+    const ActivityIconBinding bindings[] = {
+        { ActivityBarItem::Explorer, "activity.explorer", "folder.png" },
+        { ActivityBarItem::Search, "activity.search", "paper.png" },
+        { ActivityBarItem::NodeEditor, "activity.node_editor", "3d-cube.png" },
+        { ActivityBarItem::Debug, "activity.debug", "play.png" },
+        { ActivityBarItem::Extensions, "activity.extensions", "extension.png" }
+    };
+
+    for (const ActivityIconBinding& binding : bindings)
+        SetActivityBarIconTexture(binding.item, IconTextureManagerLoadPng(binding.key, binding.file_name));
+
+    SetActivityBarSettingsIconTexture(IconTextureManagerLoadPng("activity.settings", "setting.png"));
+}
+
+void ClearActivityBarIcons()
+{
+    SetActivityBarIconTexture(ActivityBarItem::Explorer, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::Search, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::NodeEditor, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::Debug, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::Extensions, (ImTextureID)0);
+    SetActivityBarSettingsIconTexture((ImTextureID)0);
+}
+
+bool InitializeActivityBarIconSystem(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    uint32_t queue_family,
+    VkQueue queue,
+    VkAllocationCallbacks* allocator)
+{
+    IconTextureManagerInitInfo icon_init{};
+    icon_init.physical_device = physical_device;
+    icon_init.device = device;
+    icon_init.queue_family = queue_family;
+    icon_init.queue = queue;
+    icon_init.allocator = allocator;
+    icon_init.base_path = SDL_GetBasePath();
+
+    if (!IconTextureManagerInitialize(icon_init))
+        return false;
+
+    ConfigureActivityBarIcons();
+    return true;
+}
+
+void ShutdownActivityBarIconSystem()
+{
+    ClearActivityBarIcons();
+    IconTextureManagerShutdown();
+}
 
 ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model)
 {
@@ -42,7 +134,7 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
                               ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoBackground |
                               ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav;
 
-    ImGui::Begin("ActivityBar", nullptr, flags);
+    ImGui::Begin("ActivityBar", NULL, flags);
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     ImVec2 window_pos = ImGui::GetWindowPos();
 
@@ -75,41 +167,50 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
         ImVec2 icon_center = ImVec2(item_min.x + width * 0.5f, item_min.y + item_size * 0.5f);
         float icon_size = sizes.activity_bar_icon_size;
         ImU32 icon_col = ImGui::GetColorU32(icon_color);
-        switch (items[i].id) {
-            case ActivityBarItem::Explorer:
-                draw_list->AddRect(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y - icon_size * 0.5f),
-                                 ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.5f), icon_col, 0, 0, sizes.activity_bar_icon_stroke);
-                draw_list->AddLine(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.5f),
-                                 ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.3f), icon_col, sizes.activity_bar_icon_stroke);
-                break;
-            case ActivityBarItem::Search:
-                draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y - icon_size * 0.1f), icon_size * 0.3f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                draw_list->AddLine(ImVec2(icon_center.x + icon_size * 0.15f, icon_center.y + icon_size * 0.15f),
-                                 ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col, sizes.activity_bar_icon_stroke);
-                break;
-            case ActivityBarItem::NodeEditor:
-                draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                draw_list->AddCircle(ImVec2(icon_center.x + icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                draw_list->AddLine(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.15f),
-                                 ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.15f), icon_col, sizes.activity_bar_icon_stroke);
-                break;
-            case ActivityBarItem::Debug:
-                draw_list->AddTriangleFilled(
-                    ImVec2(icon_center.x - icon_size * 0.3f, icon_center.y - icon_size * 0.4f),
-                    ImVec2(icon_center.x - icon_size * 0.3f, icon_center.y + icon_size * 0.4f),
-                    ImVec2(icon_center.x + icon_size * 0.3f, icon_center.y), icon_col);
-                break;
-            case ActivityBarItem::Extensions:
-                draw_list->AddRectFilled(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y - icon_size * 0.4f),
-                                       ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y - icon_size * 0.1f), icon_col);
-                draw_list->AddRectFilled(ImVec2(icon_center.x + icon_size * 0.1f, icon_center.y - icon_size * 0.4f),
-                                       ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y - icon_size * 0.1f), icon_col);
-                draw_list->AddRectFilled(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y + icon_size * 0.1f),
-                                       ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y + icon_size * 0.4f), icon_col);
-                draw_list->AddRectFilled(ImVec2(icon_center.x + icon_size * 0.1f, icon_center.y + icon_size * 0.1f),
-                                       ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col);
-                break;
+        ImTextureID icon_texture = g_activity_bar_icon_textures[ToActivityBarIconIndex(items[i].id)];
+        if (icon_texture != (ImTextureID)0) {
+            ImVec2 img_min = ImVec2(icon_center.x - icon_size * 0.5f, icon_center.y - icon_size * 0.5f);
+            ImVec2 img_max = ImVec2(icon_center.x + icon_size * 0.5f, icon_center.y + icon_size * 0.5f);
+            draw_list->AddImage(icon_texture, img_min, img_max, ImVec2(0, 0), ImVec2(1, 1), icon_col);
+        } else {
+            switch (items[i].id) {
+                case ActivityBarItem::Explorer:
+                    draw_list->AddRect(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y - icon_size * 0.5f),
+                                     ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.5f), icon_col, 0, 0, sizes.activity_bar_icon_stroke);
+                    draw_list->AddLine(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.5f),
+                                     ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.3f), icon_col, sizes.activity_bar_icon_stroke);
+                    break;
+                case ActivityBarItem::Search:
+                    draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y - icon_size * 0.1f), icon_size * 0.3f, icon_col, 12, sizes.activity_bar_icon_stroke);
+                    draw_list->AddLine(ImVec2(icon_center.x + icon_size * 0.15f, icon_center.y + icon_size * 0.15f),
+                                     ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col, sizes.activity_bar_icon_stroke);
+                    break;
+                case ActivityBarItem::NodeEditor:
+                    draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
+                    draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
+                    draw_list->AddCircle(ImVec2(icon_center.x + icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
+                    draw_list->AddLine(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.15f),
+                                     ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.15f), icon_col, sizes.activity_bar_icon_stroke);
+                    break;
+                case ActivityBarItem::Debug:
+                    draw_list->AddTriangleFilled(
+                        ImVec2(icon_center.x - icon_size * 0.3f, icon_center.y - icon_size * 0.4f),
+                        ImVec2(icon_center.x - icon_size * 0.3f, icon_center.y + icon_size * 0.4f),
+                        ImVec2(icon_center.x + icon_size * 0.3f, icon_center.y), icon_col);
+                    break;
+                case ActivityBarItem::Extensions:
+                    draw_list->AddRectFilled(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y - icon_size * 0.4f),
+                                           ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y - icon_size * 0.1f), icon_col);
+                    draw_list->AddRectFilled(ImVec2(icon_center.x + icon_size * 0.1f, icon_center.y - icon_size * 0.4f),
+                                           ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y - icon_size * 0.1f), icon_col);
+                    draw_list->AddRectFilled(ImVec2(icon_center.x - icon_size * 0.4f, icon_center.y + icon_size * 0.1f),
+                                           ImVec2(icon_center.x - icon_size * 0.1f, icon_center.y + icon_size * 0.4f), icon_col);
+                    draw_list->AddRectFilled(ImVec2(icon_center.x + icon_size * 0.1f, icon_center.y + icon_size * 0.1f),
+                                           ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col);
+                    break;
+                default:
+                    break;
+            }
         }
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             selected = i + 1;
@@ -137,20 +238,26 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
     ImVec2 settings_center = ImVec2(settings_min.x + width * 0.5f, settings_min.y + item_size * 0.5f);
     float settings_icon_size = sizes.activity_bar_icon_size;
     ImU32 settings_icon_col = ImGui::GetColorU32(icon_color);
-    float gear_outer_r = settings_icon_size * 0.34f;
-    float gear_inner_r = settings_icon_size * 0.13f;
-    float tooth_inner_r = gear_outer_r * 0.90f;
-    float tooth_outer_r = gear_outer_r * 1.32f;
-    constexpr float kPi = 3.14159265358979323846f;
-    draw_list->AddCircle(settings_center, gear_outer_r, settings_icon_col, 24, sizes.activity_bar_icon_stroke);
-    draw_list->AddCircle(settings_center, gear_inner_r, settings_icon_col, 18, sizes.activity_bar_icon_stroke);
-    for (int spoke = 0; spoke < 8; ++spoke) {
-        float a = kPi * 0.25f * spoke;
-        float c = cosf(a);
-        float s = sinf(a);
-        ImVec2 p0 = ImVec2(settings_center.x + c * tooth_inner_r, settings_center.y + s * tooth_inner_r);
-        ImVec2 p1 = ImVec2(settings_center.x + c * tooth_outer_r, settings_center.y + s * tooth_outer_r);
-        draw_list->AddLine(p0, p1, settings_icon_col, sizes.activity_bar_icon_stroke);
+    if (g_activity_bar_settings_texture != (ImTextureID)0) {
+        ImVec2 img_min = ImVec2(settings_center.x - settings_icon_size * 0.5f, settings_center.y - settings_icon_size * 0.5f);
+        ImVec2 img_max = ImVec2(settings_center.x + settings_icon_size * 0.5f, settings_center.y + settings_icon_size * 0.5f);
+        draw_list->AddImage(g_activity_bar_settings_texture, img_min, img_max, ImVec2(0, 0), ImVec2(1, 1), settings_icon_col);
+    } else {
+        float gear_outer_r = settings_icon_size * 0.34f;
+        float gear_inner_r = settings_icon_size * 0.13f;
+        float tooth_inner_r = gear_outer_r * 0.90f;
+        float tooth_outer_r = gear_outer_r * 1.32f;
+        constexpr float kPi = 3.14159265358979323846f;
+        draw_list->AddCircle(settings_center, gear_outer_r, settings_icon_col, 24, sizes.activity_bar_icon_stroke);
+        draw_list->AddCircle(settings_center, gear_inner_r, settings_icon_col, 18, sizes.activity_bar_icon_stroke);
+        for (int spoke = 0; spoke < 8; ++spoke) {
+            float a = kPi * 0.25f * spoke;
+            float c = cosf(a);
+            float s = sinf(a);
+            ImVec2 p0 = ImVec2(settings_center.x + c * tooth_inner_r, settings_center.y + s * tooth_inner_r);
+            ImVec2 p1 = ImVec2(settings_center.x + c * tooth_outer_r, settings_center.y + s * tooth_outer_r);
+            draw_list->AddLine(p0, p1, settings_icon_col, sizes.activity_bar_icon_stroke);
+        }
     }
 
     if (settings_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -162,10 +269,10 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
 
     ImGui::SetNextWindowPos(ImVec2(settings_max.x + 4.0f, settings_min.y), ImGuiCond_Appearing);
     if (ImGui::BeginPopup("ActivityBarSettingsMenu")) {
-        ImGui::MenuItem("Workbench Settings", nullptr, false, false);
+        ImGui::MenuItem("Workbench Settings", NULL, false, false);
         ImGui::Separator();
-        ImGui::MenuItem("Theme", nullptr, false, false);
-        ImGui::MenuItem("Keyboard Shortcuts", nullptr, false, false);
+        ImGui::MenuItem("Theme", NULL, false, false);
+        ImGui::MenuItem("Keyboard Shortcuts", NULL, false, false);
         ImGui::EndPopup();
     }
 

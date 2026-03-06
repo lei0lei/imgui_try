@@ -472,6 +472,7 @@ int main(int, char**)
 
     // 创建 Workbench 实例
     Workbench workbench(window);
+    workbench.InitializeIconSystem(g_PhysicalDevice, g_Device, g_QueueFamily, g_Queue, g_Allocator);
 
 
     while (!done)
@@ -568,6 +569,7 @@ int main(int, char**)
     // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppQuit() function]
     err = vkDeviceWaitIdle(g_Device);
     check_vk_result(err);
+    workbench.ShutdownIconSystem();
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

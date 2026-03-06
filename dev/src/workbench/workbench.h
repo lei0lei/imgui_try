@@ -3,6 +3,11 @@
 #include <vector>
 #include <memory>
 
+typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
+typedef struct VkDevice_T* VkDevice;
+typedef struct VkQueue_T* VkQueue;
+typedef struct VkAllocationCallbacks VkAllocationCallbacks;
+
 #include "../command/command_service.h"
 #include "parts/title_bar.h"
 #include "parts/status_bar.h"
@@ -22,6 +27,14 @@
 class Workbench {
 public:
     Workbench(SDL_Window* window);
+    bool InitializeIconSystem(
+        VkPhysicalDevice physical_device,
+        VkDevice device,
+        uint32_t queue_family,
+        VkQueue queue,
+        VkAllocationCallbacks* allocator
+    );
+    void ShutdownIconSystem();
     const WorkbenchMetrics& GetUiMetrics() const;
     // 更新帧统计信息
     void UpdateFrameStats(float fps);

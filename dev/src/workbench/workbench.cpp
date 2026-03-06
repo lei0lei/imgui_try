@@ -7,8 +7,24 @@
 
 #include "workbench.h"
 #include "../command/command_handlers.h"
+#include "../ui/activity_bar_ui.h"
 #include <vector>
 #include <cstdio>
+
+bool Workbench::InitializeIconSystem(
+    VkPhysicalDevice physical_device,
+    VkDevice device,
+    uint32_t queue_family,
+    VkQueue queue,
+    VkAllocationCallbacks* allocator)
+{
+    return InitializeActivityBarIconSystem(physical_device, device, queue_family, queue, allocator);
+}
+
+void Workbench::ShutdownIconSystem()
+{
+    ShutdownActivityBarIconSystem();
+}
 
 /**
  * @brief 渲染状态栏（旧版本）
