@@ -59,27 +59,29 @@ void WorkbenchCommandController::RegisterCommands(std::function<void(bool)> set_
         },
         std::move(toggle_primary_sidebar),
         [this, toggle_panel]() {
-            if (auto* tab = editor_area_.GetActiveTab()) {
-                tab->panel_visible = !tab->panel_visible;
-                layout_.SetPanelVisible(tab->panel_visible);
-                allow_panel_without_editor_ = false;
+            const bool current = editor_area_.GetPanelVisibleForActiveTab(layout_.IsPanelVisible());
+            const bool next = !current;
+            if (editor_area_.SetPanelVisibleForActiveTab(next)) {
+                layout_.SetPanelVisible(next);
+                SetAllowWithoutEditor(LayoutRegion::Panel, false);
             } else {
                 bool will_show = !layout_.IsPanelVisible();
                 layout_.TogglePanel();
-                allow_panel_without_editor_ = will_show;
+                SetAllowWithoutEditor(LayoutRegion::Panel, will_show);
             }
             if (toggle_panel)
                 toggle_panel();
         },
         [this, toggle_secondary_sidebar]() {
-            if (auto* tab = editor_area_.GetActiveTab()) {
-                tab->secondary_sidebar_visible = !tab->secondary_sidebar_visible;
-                layout_.SetSecondarySidebarVisible(tab->secondary_sidebar_visible);
-                allow_secondary_without_editor_ = false;
+            const bool current = editor_area_.GetSecondaryVisibleForActiveTab(layout_.IsSecondarySidebarVisible());
+            const bool next = !current;
+            if (editor_area_.SetSecondaryVisibleForActiveTab(next)) {
+                layout_.SetSecondarySidebarVisible(next);
+                SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, false);
             } else {
                 bool will_show = !layout_.IsSecondarySidebarVisible();
                 layout_.ToggleSecondarySidebar();
-                allow_secondary_without_editor_ = will_show;
+                SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, will_show);
             }
             secondary_sidebar_.SetVisible(layout_.IsSecondarySidebarVisible());
             if (toggle_secondary_sidebar)
@@ -102,22 +104,16 @@ void WorkbenchCommandController::HandleWindowAndMenuActions(bool& done)
         command_service_.Execute(cmd);
 }
 
-void WorkbenchCommandController::SetAllowPanelWithoutEditor(bool value)
+void WorkbenchCommandController::SetAllowWithoutEditor(LayoutRegion region, bool value)
 {
-    allow_panel_without_editor_ = value;
-}
-
-void WorkbenchCommandController::SetAllowSecondaryWithoutEditor(bool value)
-{
+    if (region == LayoutRegion::Panel) {
+        allow_panel_without_editor_ = value;
+        return;
+    }
     allow_secondary_without_editor_ = value;
 }
 
-bool WorkbenchCommandController::AllowPanelWithoutEditor() const
+bool WorkbenchCommandController::AllowWithoutEditor(LayoutRegion region) const
 {
-    return allow_panel_without_editor_;
-}
-
-bool WorkbenchCommandController::AllowSecondaryWithoutEditor() const
-{
-    return allow_secondary_without_editor_;
+    return (region == LayoutRegion::Panel) ? allow_panel_without_editor_ : allow_secondary_without_editor_;
 }

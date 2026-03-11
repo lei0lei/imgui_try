@@ -53,21 +53,51 @@ WorkbenchRenderer::WorkbenchRenderer(ServiceCollection& services,
     has_active_tab_index_ = true;
 }
 
-LayoutInfo WorkbenchRenderer::ComputeLayout(const WorkbenchMetrics& metrics) const
+bool WorkbenchRenderer::ResolvePanelVisible(EditorTab* active_tab) const
 {
-    LayoutState state = services_.GetLayoutService().GetState();
-    const EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
     if (active_tab) {
-        state.panel_visible = active_tab->panel_visible;
-        state.secondary_sidebar_visible = active_tab->secondary_sidebar_visible;
-    } else {
-        if (!command_controller_.AllowSecondaryWithoutEditor()) {
-            state.secondary_sidebar_visible = false;
-        }
-        if (!command_controller_.AllowPanelWithoutEditor()) {
-            state.panel_visible = false;
-        }
+        return services_.GetEditorAreaService().GetPanelVisibleForActiveTab(false);
     }
+    if (!command_controller_.AllowWithoutEditor(LayoutRegion::Panel)) {
+        return false;
+    }
+    return services_.GetLayoutService().IsPanelVisible();
+}
+
+bool WorkbenchRenderer::ResolveSecondaryVisible(EditorTab* active_tab) const
+{
+    if (active_tab) {
+        return services_.GetEditorAreaService().GetSecondaryVisibleForActiveTab(false);
+    }
+    if (!command_controller_.AllowWithoutEditor(LayoutRegion::SecondarySidebar)) {
+        return false;
+    }
+    return services_.GetLayoutService().IsSecondarySidebarVisible();
+}
+
+void WorkbenchRenderer::SyncLayoutFromActiveTab(EditorTab* active_tab)
+{
+    if (!active_tab) {
+        return;
+    }
+
+    const bool panel_visible = services_.GetEditorAreaService().GetPanelVisibleForActiveTab(false);
+    const bool secondary_visible = services_.GetEditorAreaService().GetSecondaryVisibleForActiveTab(false);
+    services_.GetLayoutService().SetPanelVisible(panel_visible);
+    services_.GetLayoutService().SetSecondarySidebarVisible(secondary_visible);
+    command_controller_.SetAllowWithoutEditor(LayoutRegion::Panel, false);
+    command_controller_.SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, false);
+}
+
+LayoutInfo WorkbenchRenderer::ComputeLayout(const WorkbenchMetrics& metrics)
+{
+    EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
+    SyncLayoutFromActiveTab(active_tab);
+
+    LayoutState state = services_.GetLayoutService().GetState();
+    state.panel_visible = ResolvePanelVisible(active_tab);
+    state.secondary_sidebar_visible = ResolveSecondaryVisible(active_tab);
+
     return layout_manager_.Calculate(metrics, state);
 }
 
@@ -98,10 +128,8 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
 {
     const int active_tab_index_before = services_.GetEditorAreaService().GetActiveTabIndex();
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-    bool panel_visible = active_tab ? active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
-    if (!active_tab && !command_controller_.AllowPanelWithoutEditor()) {
-        panel_visible = false;
-    }
+    SyncLayoutFromActiveTab(active_tab);
+    bool panel_visible = ResolvePanelVisible(active_tab);
     bool block_tab_clicks = services_.GetTitleBarService().GetActiveMenu() != TitleBarMenu::None;
     block_tab_clicks = block_tab_clicks || services_.GetTitleBarService().ConsumeBlockTabClicksOnce();
     RenderEditorArea(
@@ -118,10 +146,7 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
     if (active_tab_index_after != active_tab_index_before) {
         const LayoutInfo updated_layout = ComputeLayout(metrics);
         EditorTab* updated_active_tab = services_.GetEditorAreaService().GetActiveTab();
-        bool updated_panel_visible = updated_active_tab ? updated_active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
-        if (!updated_active_tab && !command_controller_.AllowPanelWithoutEditor()) {
-            updated_panel_visible = false;
-        }
+        bool updated_panel_visible = ResolvePanelVisible(updated_active_tab);
 
         RenderEditorArea(
             updated_layout.left_offset,
@@ -224,19 +249,16 @@ void WorkbenchRenderer::RenderPrimarySidebar(float activity_bar_w, float title_h
 void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w)
 {
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-    bool visible = active_tab ? active_tab->secondary_sidebar_visible : services_.GetLayoutService().IsSecondarySidebarVisible();
+    SyncLayoutFromActiveTab(active_tab);
+    bool visible = ResolveSecondaryVisible(active_tab);
     if (!visible) {
         secondary_sidebar_part_.GetService().SetVisible(false);
         return;
     }
-    if (!active_tab) {
-        if (!command_controller_.AllowSecondaryWithoutEditor()) {
-            services_.GetLayoutService().SetSecondarySidebarVisible(false);
-            secondary_sidebar_part_.GetService().SetVisible(false);
-            return;
-        }
-    } else {
-        command_controller_.SetAllowSecondaryWithoutEditor(false);
+    if (!active_tab && !command_controller_.AllowWithoutEditor(LayoutRegion::SecondarySidebar)) {
+        services_.GetLayoutService().SetSecondarySidebarVisible(false);
+        secondary_sidebar_part_.GetService().SetVisible(false);
+        return;
     }
 
     secondary_sidebar_part_.GetService().SetVisible(true);
@@ -248,9 +270,9 @@ void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h
         services_.GetLayoutService().SetSecondarySidebarVisible(false);
         secondary_sidebar_part_.GetService().SetVisible(false);
         if (active_tab) {
-            active_tab->secondary_sidebar_visible = false;
+            services_.GetEditorAreaService().SetSecondaryVisibleForActiveTab(false);
         } else {
-            command_controller_.SetAllowSecondaryWithoutEditor(false);
+            command_controller_.SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, false);
         }
     }
 }
@@ -258,25 +280,22 @@ void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h
 void WorkbenchRenderer::RenderPanel(float left_offset, float right_offset, float status_bar_h, float panel_h)
 {
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-    bool visible = active_tab ? active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
+    SyncLayoutFromActiveTab(active_tab);
+    bool visible = ResolvePanelVisible(active_tab);
     if (!visible)
         return;
-    if (!active_tab) {
-        if (!command_controller_.AllowPanelWithoutEditor()) {
-            ImGuiIO& io = ImGui::GetIO();
-            const WorkbenchTheme& theme = GetWorkbenchTheme();
-            ImDrawList* bg = ImGui::GetBackgroundDrawList();
-            float panel_x = left_offset;
-            float panel_y = io.DisplaySize.y - status_bar_h - panel_h;
-            float panel_width = io.DisplaySize.x - left_offset - right_offset;
-            bg->AddRectFilled(ImVec2(panel_x, panel_y),
-                              ImVec2(panel_x + panel_width, io.DisplaySize.y - status_bar_h),
-                              ImGui::GetColorU32(theme.colors.editor_welcome_bg));
-            services_.GetLayoutService().SetPanelVisible(false);
-            return;
-        }
-    } else {
-        command_controller_.SetAllowPanelWithoutEditor(false);
+    if (!active_tab && !command_controller_.AllowWithoutEditor(LayoutRegion::Panel)) {
+        ImGuiIO& io = ImGui::GetIO();
+        const WorkbenchTheme& theme = GetWorkbenchTheme();
+        ImDrawList* bg = ImGui::GetBackgroundDrawList();
+        float panel_x = left_offset;
+        float panel_y = io.DisplaySize.y - status_bar_h - panel_h;
+        float panel_width = io.DisplaySize.x - left_offset - right_offset;
+        bg->AddRectFilled(ImVec2(panel_x, panel_y),
+                          ImVec2(panel_x + panel_width, io.DisplaySize.y - status_bar_h),
+                          ImGui::GetColorU32(theme.colors.editor_welcome_bg));
+        services_.GetLayoutService().SetPanelVisible(false);
+        return;
     }
 
     SceneType mode = active_tab ? active_tab->scene_type : SceneType::Scene3D;
@@ -287,14 +306,9 @@ void WorkbenchRenderer::RenderTitleBar(SDL_Window* window, float title_h)
 {
     bool primary_visible = services_.GetLayoutService().IsPrimarySidebarVisible();
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-    bool panel_visible = active_tab ? active_tab->panel_visible : services_.GetLayoutService().IsPanelVisible();
-    bool secondary_visible = active_tab ? active_tab->secondary_sidebar_visible : services_.GetLayoutService().IsSecondarySidebarVisible();
-    if (!active_tab && !command_controller_.AllowPanelWithoutEditor()) {
-        panel_visible = false;
-    }
-    if (!active_tab && !command_controller_.AllowSecondaryWithoutEditor()) {
-        secondary_visible = false;
-    }
+    SyncLayoutFromActiveTab(active_tab);
+    bool panel_visible = ResolvePanelVisible(active_tab);
+    bool secondary_visible = ResolveSecondaryVisible(active_tab);
     title_bar_part_.Render(window, title_h, primary_visible, panel_visible, secondary_visible);
 }
 

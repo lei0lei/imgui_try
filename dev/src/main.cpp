@@ -391,7 +391,6 @@ int main(int, char**)
     // 启用OpenGL双缓冲（虽然我们使用Vulkan，但某些平台可能需要这个属性来正确处理窗口刷新）
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-
     // Create window with Vulkan graphics context
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY | SDL_WINDOW_BORDERLESS;

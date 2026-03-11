@@ -1,0 +1,61 @@
+direction: right
+
+app: "SDL3/Vulkan App\n(main.cpp)" {
+  shape: rectangle
+}
+
+workbench: "Workbench Facade\n(workbench/*.cpp)" {
+  shape: rectangle
+}
+
+renderer: "WorkbenchRenderer\nUI orchestration"
+controller: "WorkbenchCommandController\ncommand bridge"
+
+parts: "Workbench Parts\n(title/status/activity/sidebar/panel/editor)" {
+  shape: rectangle
+}
+
+services: "ServiceCollection" {
+  shape: rectangle
+
+  activity: "ActivityBarService"
+  title: "TitleBarService"
+  layout: "LayoutService"
+  editor: "EditorAreaService"
+  panel: "PanelService"
+  notification: "NotificationService"
+  view_registry: "ViewRegistry"
+}
+
+ui: "UI Render Layer\n(ui/*.cpp)" {
+  shape: rectangle
+}
+
+algorithms: "Algorithms\n(node_graph_executor)" {
+  shape: rectangle
+}
+
+command: "Command Layer\n(command/*.cpp)" {
+  shape: rectangle
+}
+
+backends: "ImGui + SDL3 + Vulkan Backends"
+
+app -> workbench: "frame loop calls"
+workbench -> renderer: "render entrypoints"
+workbench -> controller: "menu/window handling"
+
+renderer -> parts: "delegates draw"
+parts -> ui: "view model + draw"
+
+workbench -> services: "state access"
+renderer -> services: "read/write state"
+controller -> services: "consume commands + mutate state"
+
+controller -> command: "register/execute"
+ui -> services.title: "trigger command id"
+command -> services: "handlers update state"
+
+ui -> algorithms: "node panel run"
+app -> backends: "init/shutdown"
+ui -> backends: "ImGui draw data"

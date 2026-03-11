@@ -47,13 +47,7 @@ public:
     void RenderPanel(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
     void RenderSecondarySidebar(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
     void RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before);
-    LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics) const;
-    void RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w);
-    void RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w);
-    void RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w);
-    void RenderPanel(float left_offset, float right_offset, float status_bar_h, float panel_h);
-    void RenderTitleBar(float title_h);
-    void RenderStatusBar(float status_bar_h, float title_h);
+    LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics);
     // 标题栏事件已改为命令处理
 
     // 状态暴露（如有需要）
@@ -95,8 +89,6 @@ public:
     IEditorAreaService& GetEditorAreaService() { return services_.GetEditorAreaService(); }
     const IEditorAreaService& GetEditorAreaService() const { return services_.GetEditorAreaService(); }
 
-    // 渲染编辑器区域
-    void RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible, bool block_tab_clicks);
 private:
     SDL_Window* window_;
     CommandService command_service_;

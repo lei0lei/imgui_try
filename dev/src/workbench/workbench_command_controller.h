@@ -4,6 +4,11 @@
 #include "../command/command_service.h"
 #include "../services/service_interfaces.h"
 
+enum class LayoutRegion {
+    Panel,
+    SecondarySidebar,
+};
+
 class WorkbenchCommandController {
 public:
     WorkbenchCommandController(CommandService& command_service,
@@ -26,10 +31,8 @@ public:
 
     void HandleWindowAndMenuActions(bool& done);
 
-    void SetAllowPanelWithoutEditor(bool value);
-    void SetAllowSecondaryWithoutEditor(bool value);
-    bool AllowPanelWithoutEditor() const;
-    bool AllowSecondaryWithoutEditor() const;
+    void SetAllowWithoutEditor(LayoutRegion region, bool value);
+    bool AllowWithoutEditor(LayoutRegion region) const;
 
 private:
     CommandService& command_service_;

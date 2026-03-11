@@ -25,7 +25,18 @@ struct ServiceOverrides {
 
 class ServiceCollection {
 public:
-	ServiceCollection(const ServiceOverrides& overrides = {}) : overrides_(overrides) {}
+	ServiceCollection(const ServiceOverrides& overrides = {}) : overrides_(overrides) {
+		// Eagerly initialize core services so dependencies are explicit and deterministic.
+		(void)EnsureActivityBar();
+		(void)EnsurePrimarySidebar();
+		(void)EnsureSecondarySidebar();
+		(void)EnsurePanel();
+		(void)EnsureEditorArea();
+		(void)EnsureTitleBar();
+		(void)EnsureNotification();
+		(void)EnsureLayout();
+		(void)EnsureViewRegistry();
+	}
 
 	IActivityBarService& GetActivityBarService() { return *EnsureActivityBar(); }
 	const IActivityBarService& GetActivityBarService() const { return *EnsureActivityBar(); }

@@ -32,6 +32,7 @@ SceneType EditorAreaService::GetActiveSceneType(SceneType fallback) const {
 void EditorAreaService::AddTab(const EditorTab& tab) {
     for (auto& t : tabs_) t.active = false;
     tabs_.push_back(tab);
+    tab_layout_states_.push_back({});
     active_tab_index_ = static_cast<int>(tabs_.size()) - 1;
     tabs_[active_tab_index_].active = true;
 }
@@ -40,6 +41,7 @@ void EditorAreaService::CloseTab(int index) {
     if (index < 0 || index >= static_cast<int>(tabs_.size())) return;
     const bool was_active = tabs_[index].active;
     tabs_.erase(tabs_.begin() + index);
+    tab_layout_states_.erase(tab_layout_states_.begin() + index);
 
     if (tabs_.empty()) {
         active_tab_index_ = -1;
@@ -72,8 +74,11 @@ void EditorAreaService::MoveTab(int from_index, int to_index) {
     if (from_index >= static_cast<int>(tabs_.size()) || to_index >= static_cast<int>(tabs_.size())) return;
     if (from_index == to_index) return;
     EditorTab moved = tabs_[from_index];
+    TabLayoutState moved_layout = tab_layout_states_[from_index];
     tabs_.erase(tabs_.begin() + from_index);
+    tab_layout_states_.erase(tab_layout_states_.begin() + from_index);
     tabs_.insert(tabs_.begin() + to_index, std::move(moved));
+    tab_layout_states_.insert(tab_layout_states_.begin() + to_index, std::move(moved_layout));
 
     if (active_tab_index_ == from_index) {
         active_tab_index_ = to_index;
@@ -84,6 +89,40 @@ void EditorAreaService::MoveTab(int from_index, int to_index) {
     }
 }
 
+bool EditorAreaService::GetPanelVisibleForActiveTab(bool fallback) const {
+    const int idx = active_tab_index_;
+    if (idx < 0 || idx >= static_cast<int>(tab_layout_states_.size())) {
+        return fallback;
+    }
+    return tab_layout_states_[idx].panel_visible;
+}
+
+bool EditorAreaService::GetSecondaryVisibleForActiveTab(bool fallback) const {
+    const int idx = active_tab_index_;
+    if (idx < 0 || idx >= static_cast<int>(tab_layout_states_.size())) {
+        return fallback;
+    }
+    return tab_layout_states_[idx].secondary_sidebar_visible;
+}
+
+bool EditorAreaService::SetPanelVisibleForActiveTab(bool visible) {
+    const int idx = active_tab_index_;
+    if (idx < 0 || idx >= static_cast<int>(tab_layout_states_.size())) {
+        return false;
+    }
+    tab_layout_states_[idx].panel_visible = visible;
+    return true;
+}
+
+bool EditorAreaService::SetSecondaryVisibleForActiveTab(bool visible) {
+    const int idx = active_tab_index_;
+    if (idx < 0 || idx >= static_cast<int>(tab_layout_states_.size())) {
+        return false;
+    }
+    tab_layout_states_[idx].secondary_sidebar_visible = visible;
+    return true;
+}
+
 void EditorAreaService::CloseActiveTab() {
     int idx = active_tab_index_;
     if (idx >= 0) CloseTab(idx);
@@ -91,6 +130,7 @@ void EditorAreaService::CloseActiveTab() {
 
 void EditorAreaService::SetTabs(const std::vector<EditorTab>& tabs) {
     tabs_ = tabs;
+    tab_layout_states_.assign(tabs_.size(), TabLayoutState{});
     RebuildActiveTabIndex();
 }
 

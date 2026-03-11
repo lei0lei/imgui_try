@@ -30,7 +30,7 @@ public:
 
     const WorkbenchMetrics& GetUiMetrics() const { return config_.Metrics(); }
 
-    LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics) const;
+    LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics);
 
     void RenderActivityBar(const WorkbenchMetrics& metrics);
     void RenderTitleBar(const WorkbenchMetrics& metrics, SDL_Window* window);
@@ -41,6 +41,7 @@ public:
     void RenderSecondarySidebar(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
     void RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before);
 
+private:
     void RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w);
     void RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w);
     void RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w);
@@ -49,7 +50,10 @@ public:
     void RenderStatusBar(SDL_Window* window, float status_bar_h, float title_h);
     void RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible, bool block_tab_clicks);
 
-private:
+    bool ResolvePanelVisible(EditorTab* active_tab) const;
+    bool ResolveSecondaryVisible(EditorTab* active_tab) const;
+    void SyncLayoutFromActiveTab(EditorTab* active_tab);
+
     ServiceCollection& services_;
     TitleBarPart& title_bar_part_;
     StatusBarPart& status_bar_part_;

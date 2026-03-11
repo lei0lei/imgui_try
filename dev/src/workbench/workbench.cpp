@@ -27,16 +27,6 @@ void Workbench::ShutdownIconSystem()
 }
 
 /**
- * @brief 渲染状态栏（旧版本）
- * @param status_bar_h 状态栏高度
- * @param title_h 标题栏高度
- */
-void Workbench::RenderStatusBar(float status_bar_h, float title_h)
-{
-    renderer_.RenderStatusBar(window_, status_bar_h, title_h);
-}
-
-/**
  * @brief 渲染活动栏
  * @param metrics 工作台度量信息
  */
@@ -117,7 +107,7 @@ void Workbench::RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const L
  * @param metrics 工作台度量信息
  * @return LayoutInfo 计算得到的布局信息
  */
-LayoutInfo Workbench::ComputeLayout(const WorkbenchMetrics& metrics) const
+LayoutInfo Workbench::ComputeLayout(const WorkbenchMetrics& metrics)
 {
      return renderer_.ComputeLayout(metrics);
 }
@@ -140,53 +130,6 @@ void Workbench::UpdateFrameStats(float fps)
     char buf[64];
     snprintf(buf, sizeof(buf), "FPS: %.1f", fps);
     services_.GetNotificationService().SetMessage(buf);
-}
-
-/**
- * @brief 渲染活动栏（旧版本）
- * @param title_h 标题栏高度
- * @param status_bar_h 状态栏高度
- * @param activity_bar_w 活动栏宽度
- */
-void Workbench::RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w)
-{
-    renderer_.RenderActivityBar(title_h, status_bar_h, activity_bar_w);
-}
-
-/**
- * @brief 渲染主侧边栏（旧版本）
- * @param activity_bar_w 活动栏宽度
- * @param title_h 标题栏高度
- * @param status_bar_h 状态栏高度
- * @param primary_sidebar_w 主侧边栏宽度
- */
-void Workbench::RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w)
-{
-    renderer_.RenderPrimarySidebar(activity_bar_w, title_h, status_bar_h, primary_sidebar_w);
-}
-
-/**
- * @brief 渲染辅助侧边栏（旧版本）
- * @param title_h 标题栏高度
- * @param status_bar_h 状态栏高度
- * @param panel_h 面板高度
- * @param secondary_sidebar_w 辅助侧边栏宽度
- */
-void Workbench::RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w)
-{
-    renderer_.RenderSecondarySidebar(title_h, status_bar_h, panel_h, secondary_sidebar_w);
-}
-
-/**
- * @brief 渲染面板（旧版本）
- * @param left_offset 左侧偏移
- * @param right_offset 右侧偏移
- * @param status_bar_h 状态栏高度
- * @param panel_h 面板高度
- */
-void Workbench::RenderPanel(float left_offset, float right_offset, float status_bar_h, float panel_h)
-{
-    renderer_.RenderPanel(left_offset, right_offset, status_bar_h, panel_h);
 }
 
 /**
@@ -257,15 +200,6 @@ void Workbench::SetPrimarySidebarVisible(bool visible)
 }
 
 /**
- * @brief 渲染标题栏（旧版本）
- * @param title_h 标题栏高度
- */
-void Workbench::RenderTitleBar(float title_h)
-{
-    renderer_.RenderTitleBar(window_, title_h);
-}
-
-/**
  * @brief 切换主侧边栏可见性
  */
 void Workbench::TogglePrimarySidebar()
@@ -280,20 +214,6 @@ void Workbench::CloseSecondarySidebar()
 {
     services_.GetLayoutService().SetSecondarySidebarVisible(false);
     secondary_sidebar_part_.GetService().SetVisible(false);
-}
-
-/**
- * @brief 渲染编辑器区域（旧版本）
- * @param left_offset 左侧偏移
- * @param right_offset 右侧偏移
- * @param title_h 标题栏高度
- * @param status_bar_h 状态栏高度
- * @param panel_h 面板高度
- * @param panel_visible 面板是否可见
- * @param block_tab_clicks 是否阻止标签点击
- */
-void Workbench::RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, float panel_h, bool panel_visible, bool block_tab_clicks) {
-    renderer_.RenderEditorArea(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks);
 }
 
 /**

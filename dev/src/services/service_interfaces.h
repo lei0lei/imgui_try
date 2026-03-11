@@ -103,6 +103,10 @@ public:
     virtual void CloseTab(int index) = 0;
     virtual void ActivateTab(int index) = 0;
     virtual void MoveTab(int from_index, int to_index) = 0;
+    virtual bool GetPanelVisibleForActiveTab(bool fallback) const = 0;
+    virtual bool GetSecondaryVisibleForActiveTab(bool fallback) const = 0;
+    virtual bool SetPanelVisibleForActiveTab(bool visible) = 0;
+    virtual bool SetSecondaryVisibleForActiveTab(bool visible) = 0;
 };
 
 class IViewRegistry {
