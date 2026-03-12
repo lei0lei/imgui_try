@@ -6,11 +6,30 @@
  */
 
 #include "activity_bar_service.h"
+#include "../core/workbench_types.h"
+
+namespace {
+
+bool IsSelectableActivityItem(int index)
+{
+    switch (static_cast<ActivityBarItem>(index)) {
+        case ActivityBarItem::Explorer:
+        case ActivityBarItem::Search:
+        case ActivityBarItem::Debug:
+        case ActivityBarItem::Editor:
+        case ActivityBarItem::Extensions:
+            return true;
+        default:
+            return false;
+    }
+}
+
+}
 
 ActivityBarService::ActivityBarService()
     : selected_item_(1) // 1 = Explorer
 {
-    items_ = { "Explorer", "Search", "Node editor", "Debug", "Editor", "Extensions" };
+    items_ = { "Explorer", "Search", "Debug", "Editor", "Extensions" };
 }
 
 int ActivityBarService::GetSelectedItem() const {
@@ -18,7 +37,11 @@ int ActivityBarService::GetSelectedItem() const {
 }
 
 void ActivityBarService::SetSelectedItem(int index) {
-    if (index >= 1 && index <= (int)items_.size())
+    if (index == static_cast<int>(ActivityBarItem::NodeEditor)) {
+        selected_item_ = static_cast<int>(ActivityBarItem::Explorer);
+        return;
+    }
+    if (IsSelectableActivityItem(index))
         selected_item_ = index;
 }
 
@@ -28,6 +51,6 @@ const std::vector<std::string>& ActivityBarService::GetItems() const {
 
 void ActivityBarService::SetItems(const std::vector<std::string>& items) {
     items_ = items;
-    if (selected_item_ >= (int)items_.size())
-        selected_item_ = 0;
+    if (!IsSelectableActivityItem(selected_item_))
+        selected_item_ = static_cast<int>(ActivityBarItem::Explorer);
 }

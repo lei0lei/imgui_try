@@ -19,7 +19,6 @@ const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
     switch (item) {
         case ActivityBarItem::Explorer: return "explorer";
         case ActivityBarItem::Search: return "search";
-        case ActivityBarItem::NodeEditor: return "node";
         case ActivityBarItem::Debug: return "debug";
         case ActivityBarItem::Editor: return "editor";
         case ActivityBarItem::Extensions: return "extensions";

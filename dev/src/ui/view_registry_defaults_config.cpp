@@ -257,7 +257,6 @@ void EnsureDefaultPlugins()
         {
             { ActivityBarItem::Explorer, "explorer" },
             { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
             { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
@@ -289,7 +288,6 @@ void EnsureDefaultPlugins()
         {
             { ActivityBarItem::Explorer, "explorer" },
             { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
             { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
@@ -318,7 +316,6 @@ void EnsureDefaultPlugins()
         {
             { ActivityBarItem::Explorer, "explorer" },
             { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
             { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }

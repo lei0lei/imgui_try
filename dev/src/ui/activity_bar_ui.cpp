@@ -54,7 +54,6 @@ void ConfigureActivityBarIcons()
     const ActivityIconBinding bindings[] = {
         { ActivityBarItem::Explorer, "activity.explorer", "folder.png" },
         { ActivityBarItem::Search, "activity.search", "paper.png" },
-        { ActivityBarItem::NodeEditor, "activity.node_editor", "3d-cube.png" },
         { ActivityBarItem::Debug, "activity.debug", "play.png" },
         { ActivityBarItem::Editor, "activity.editor", "area.png" },
         { ActivityBarItem::Extensions, "activity.extensions", "extension.png" }
@@ -70,7 +69,6 @@ void ClearActivityBarIcons()
 {
     SetActivityBarIconTexture(ActivityBarItem::Explorer, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Search, (ImTextureID)0);
-    SetActivityBarIconTexture(ActivityBarItem::NodeEditor, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Debug, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Editor, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Extensions, (ImTextureID)0);
@@ -148,20 +146,20 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
     ActivityItem items[] = {
         { ActivityBarItem::Explorer, "Explorer" },
         { ActivityBarItem::Search, "Search" },
-        { ActivityBarItem::NodeEditor, "Node editor" },
         { ActivityBarItem::Debug, "Debug" },
         { ActivityBarItem::Editor, "Editor" },
         { ActivityBarItem::Extensions, "Extensions" }
     };
+    constexpr int item_count = sizeof(items) / sizeof(items[0]);
     float item_size = width;
     float item_y = window_pos.y + sizes.activity_bar_padding_y;
     int selected = view_model.selected_index;
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < item_count; ++i) {
         ImVec2 item_min = ImVec2(window_pos.x, item_y);
         ImVec2 item_max = ImVec2(window_pos.x + width, item_y + item_size);
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool is_hovered = (mouse_pos.x >= item_min.x && mouse_pos.x <= item_max.x && mouse_pos.y >= item_min.y && mouse_pos.y <= item_max.y);
-        bool is_selected = (selected == i + 1); // ActivityBarItem::Explorer == 1
+        bool is_selected = (selected == static_cast<int>(items[i].id));
         if (is_selected) {
             draw_list->AddRectFilled(item_min, item_max, ImGui::GetColorU32(active_color));
             draw_list->AddRectFilled(ImVec2(item_min.x, item_min.y), ImVec2(item_min.x + sizes.activity_bar_active_indicator_w, item_max.y), ImGui::GetColorU32(colors.activity_bar_indicator));
@@ -189,13 +187,6 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
                     draw_list->AddLine(ImVec2(icon_center.x + icon_size * 0.15f, icon_center.y + icon_size * 0.15f),
                                      ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col, sizes.activity_bar_icon_stroke);
                     break;
-                case ActivityBarItem::NodeEditor:
-                    draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                    draw_list->AddCircle(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                    draw_list->AddCircle(ImVec2(icon_center.x + icon_size * 0.2f, icon_center.y + icon_size * 0.3f), icon_size * 0.15f, icon_col, 12, sizes.activity_bar_icon_stroke);
-                    draw_list->AddLine(ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y - icon_size * 0.15f),
-                                     ImVec2(icon_center.x - icon_size * 0.2f, icon_center.y + icon_size * 0.15f), icon_col, sizes.activity_bar_icon_stroke);
-                    break;
                 case ActivityBarItem::Debug:
                     draw_list->AddTriangleFilled(
                         ImVec2(icon_center.x - icon_size * 0.3f, icon_center.y - icon_size * 0.4f),
@@ -217,9 +208,9 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
             }
         }
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            selected = i + 1;
+            selected = static_cast<int>(items[i].id);
             if (view_model.on_select)
-                view_model.on_select(i + 1);
+                view_model.on_select(selected);
             result.selected_item = items[i].id;
             result.item_clicked = true;
         }
