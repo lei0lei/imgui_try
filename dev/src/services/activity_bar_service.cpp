@@ -10,7 +10,7 @@
 ActivityBarService::ActivityBarService()
     : selected_item_(1) // 1 = Explorer
 {
-    items_ = { "Explorer", "Search", "Node editor", "Debug", "Extensions" };
+    items_ = { "Explorer", "Search", "Node editor", "Debug", "Editor", "Extensions" };
 }
 
 int ActivityBarService::GetSelectedItem() const {

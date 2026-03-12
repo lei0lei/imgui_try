@@ -7,8 +7,11 @@
 
 #include "workbench_renderer.h"
 #include "../ui/view_registry_defaults.h"
+#include "../ui/view_registry_defaults_config.h"
 #include "../workbench/workbench_config.h"
 #include "imgui.h"
+
+#include <string>
 
 namespace {
 const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
@@ -18,6 +21,7 @@ const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
         case ActivityBarItem::Search: return "search";
         case ActivityBarItem::NodeEditor: return "node";
         case ActivityBarItem::Debug: return "debug";
+        case ActivityBarItem::Editor: return "editor";
         case ActivityBarItem::Extensions: return "extensions";
         default: return nullptr;
     }
@@ -126,6 +130,35 @@ void WorkbenchRenderer::RenderPrimarySidebar(const WorkbenchMetrics& metrics)
 
 void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
 {
+    SceneType requested_mode;
+    while (UI::ConsumeCreateSceneTabRequest(requested_mode)) {
+        EditorTab new_tab;
+        int same_type_count = 0;
+        for (const auto& tab : services_.GetEditorAreaService().GetTabs()) {
+            if (tab.scene_type == requested_mode) {
+                ++same_type_count;
+            }
+        }
+
+        if (requested_mode == SceneType::Scene2D) {
+            new_tab.name = "2D-Scene-" + std::to_string(same_type_count + 1);
+        } else if (requested_mode == SceneType::NodeEditor) {
+            new_tab.name = "Node-Graph-" + std::to_string(same_type_count + 1);
+            new_tab.node_canvas_pan = ImVec2(0.0f, 0.0f);
+            new_tab.node_canvas_zoom = 1.0f;
+        } else {
+            new_tab.name = "3D-Scene-" + std::to_string(same_type_count + 1);
+        }
+
+        new_tab.path = "";
+        new_tab.modified = false;
+        new_tab.active = true;
+        new_tab.scene_type = requested_mode;
+        new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(requested_mode).id;
+        new_tab.panel_active_view_id = UI::GetDefaultPanelView(requested_mode).id;
+        services_.GetEditorAreaService().AddTab(new_tab);
+    }
+
     const int active_tab_index_before = services_.GetEditorAreaService().GetActiveTabIndex();
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
     SyncLayoutFromActiveTab(active_tab);

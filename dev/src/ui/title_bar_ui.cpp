@@ -158,8 +158,7 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
         draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), menu_names[i]);
         if (active_menu == i) {
             const char* items[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-            bool has_submenu[] = { false, false, false, false, false };
-            if (i == 0) { items[0] = "New"; has_submenu[0] = true; items[1] = "Open"; items[2] = "Save"; items[3] = "Exit"; }
+            if (i == 0) { items[0] = "Save"; items[1] = "Exit"; }
             else if (i == 1) { items[0] = "Undo"; items[1] = "Redo"; }
             else if (i == 2) { items[0] = "Explorer"; items[1] = "Console"; }
             else if (i == 3) { items[0] = "About"; }
@@ -170,42 +169,24 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
             ImVec2 dropdown_max = ImVec2(dropdown_pos.x + dropdown_size.x, dropdown_pos.y + dropdown_size.y);
             fg_list->AddRectFilled(dropdown_pos, dropdown_max, ImGui::GetColorU32(bg_color));
             fg_list->AddRect(dropdown_pos, dropdown_max, ImGui::GetColorU32(colors.title_bar_menu_border), 0.0f, 0, sizes.title_dropdown_border_thickness);
-            static int hovered_submenu_item = -1; int current_hovered_item = -1;
-            bool mouse_in_new_submenu = false;
-            if (i == 0) {
-                ImVec2 submenu_pos = ImVec2(dropdown_max.x, dropdown_pos.y);
-                ImVec2 submenu_size = ImVec2(dropdown_w, menu_item_h * 2);
-                ImVec2 submenu_max = ImVec2(submenu_pos.x + submenu_size.x, submenu_pos.y + submenu_size.y);
-                mouse_in_new_submenu = (mouse_pos.x >= submenu_pos.x && mouse_pos.x <= submenu_max.x && mouse_pos.y >= submenu_pos.y && mouse_pos.y <= submenu_max.y);
-            }
             for (int j = 0; j < item_count; j++) {
                 if (!items[j]) continue;
                 ImVec2 item_pos = ImVec2(dropdown_pos.x, dropdown_pos.y + j * menu_item_h);
                 ImVec2 item_max = ImVec2(item_pos.x + dropdown_size.x, item_pos.y + menu_item_h);
                 bool item_hovered = (mouse_pos.x >= item_pos.x && mouse_pos.x <= item_max.x && mouse_pos.y >= item_pos.y && mouse_pos.y <= item_max.y);
-                if (i == 0 && j == 0 && mouse_in_new_submenu) item_hovered = true;
-                if (item_hovered) current_hovered_item = j;
                 ImU32 item_bg = item_hovered ? ImGui::GetColorU32(colors.title_bar_menu_item_hover) : ImGui::GetColorU32(bg_color);
                 fg_list->AddRectFilled(item_pos, item_max, item_bg);
                 float text_height = ImGui::GetTextLineHeight();
                 float centered_y = item_pos.y + (menu_item_h - text_height) * 0.5f;
                 fg_list->AddText(ImVec2(item_pos.x + sizes.title_menu_text_padding_x, centered_y), ImGui::GetColorU32(text_color), items[j]);
-                if (has_submenu[j]) {
-                    float arrow_x = item_max.x - sizes.title_menu_text_padding_x - sizes.title_menu_arrow_w;
-                    float arrow_y = item_pos.y + menu_item_h * 0.5f;
-                    fg_list->AddTriangleFilled(ImVec2(arrow_x - sizes.title_menu_arrow_w * 0.6f, arrow_y - sizes.title_menu_arrow_h * 0.5f),
-                                              ImVec2(arrow_x - sizes.title_menu_arrow_w * 0.6f, arrow_y + sizes.title_menu_arrow_h * 0.5f),
-                                              ImVec2(arrow_x + sizes.title_menu_arrow_w * 0.4f, arrow_y), ImGui::GetColorU32(text_color));
-                }
-                if (item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !has_submenu[j]) {
+                if (item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                     active_menu = -1;
                     if (view_model.set_active_menu)
                         view_model.set_active_menu(TitleBarMenu::None);
                     if (i == 0) {
                         if (view_model.trigger_command) {
-                            if (j == 1) view_model.trigger_command(CommandId::FileOpen);
-                            else if (j == 2) view_model.trigger_command(CommandId::FileSave);
-                            else if (j == 3) view_model.trigger_command(CommandId::FileExit);
+                            if (j == 0) view_model.trigger_command(CommandId::FileSave);
+                            else if (j == 1) view_model.trigger_command(CommandId::FileExit);
                         }
                     } else if (i == 1) {
                         if (view_model.trigger_command) {
@@ -223,45 +204,6 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
                         }
                     }
                     menu_click_handled = true;
-                }
-            }
-            hovered_submenu_item = current_hovered_item;
-            if (i == 0) {
-                bool show_submenu = false;
-                const char* submenu_items[] = { "2D Scene", "3D Scene", "Node Graph" };
-                int submenu_count = 3;
-                ImVec2 submenu_pos = ImVec2(dropdown_max.x, dropdown_pos.y);
-                ImVec2 submenu_size = ImVec2(dropdown_w, menu_item_h * submenu_count);
-                ImVec2 submenu_max = ImVec2(submenu_pos.x + submenu_size.x, submenu_pos.y + submenu_size.y);
-                bool mouse_in_submenu = (mouse_pos.x >= submenu_pos.x && mouse_pos.x <= submenu_max.x && mouse_pos.y >= submenu_pos.y && mouse_pos.y <= submenu_max.y);
-                if (hovered_submenu_item == 0 || mouse_in_submenu) {
-                    show_submenu = true;
-                    hovered_submenu_item = 0;
-                }
-                if (show_submenu) {
-                    fg_list->AddRectFilled(submenu_pos, submenu_max, ImGui::GetColorU32(bg_color));
-                    fg_list->AddRect(submenu_pos, submenu_max, ImGui::GetColorU32(colors.title_bar_menu_border), 0.0f, 0, sizes.title_dropdown_border_thickness);
-                    for (int k = 0; k < submenu_count; k++) {
-                        ImVec2 sub_item_pos = ImVec2(submenu_pos.x, submenu_pos.y + k * menu_item_h);
-                        ImVec2 sub_item_max = ImVec2(sub_item_pos.x + submenu_size.x, sub_item_pos.y + menu_item_h);
-                        bool sub_item_hovered = (mouse_pos.x >= sub_item_pos.x && mouse_pos.x <= sub_item_max.x && mouse_pos.y >= sub_item_pos.y && mouse_pos.y <= sub_item_max.y);
-                        ImU32 sub_item_bg = sub_item_hovered ? ImGui::GetColorU32(colors.title_bar_menu_item_hover) : ImGui::GetColorU32(bg_color);
-                        fg_list->AddRectFilled(sub_item_pos, sub_item_max, sub_item_bg);
-                        float text_height = ImGui::GetTextLineHeight();
-                        float centered_y = sub_item_pos.y + (menu_item_h - text_height) * 0.5f;
-                        fg_list->AddText(ImVec2(sub_item_pos.x + sizes.title_menu_text_padding_x, centered_y), ImGui::GetColorU32(text_color), submenu_items[k]);
-                        if (sub_item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                            active_menu = -1;
-                            if (view_model.trigger_command) {
-                                if (k == 0) view_model.trigger_command(CommandId::FileNew2D);
-                                else if (k == 1) view_model.trigger_command(CommandId::FileNew3D);
-                                else if (k == 2) view_model.trigger_command(CommandId::FileNewNodeGraph);
-                            }
-                            if (view_model.set_active_menu)
-                                view_model.set_active_menu(TitleBarMenu::None);
-                            menu_click_handled = true;
-                        }
-                    }
                 }
             }
         }

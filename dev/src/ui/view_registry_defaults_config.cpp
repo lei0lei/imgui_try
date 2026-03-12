@@ -8,11 +8,35 @@
 #include "view_registry_defaults_config.h"
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
-#include "../algorithms/node_graph_executor.h"
+#include "../scenes/scene_plugin_registry.h"
+#include "../scenes/2DScene/scene_views.h"
+#include "../scenes/3DScene/scene_views.h"
+#include "../scenes/NodeEditorScene/scene_views.h"
 #include <algorithm>
+#include <deque>
+#include <string>
 #include <utility>
 
 namespace UI {
+
+namespace {
+std::deque<SceneType> g_pending_scene_tab_requests;
+}
+
+void RequestCreateSceneTab(SceneType mode)
+{
+    g_pending_scene_tab_requests.push_back(mode);
+}
+
+bool ConsumeCreateSceneTabRequest(SceneType& mode)
+{
+    if (g_pending_scene_tab_requests.empty()) {
+        return false;
+    }
+    mode = g_pending_scene_tab_requests.front();
+    g_pending_scene_tab_requests.pop_front();
+    return true;
+}
 
 namespace {
 
@@ -26,6 +50,28 @@ void DrawPlaceholderHeader(const char* title, const ImVec4& color)
 void DrawEmptyState(const char* message)
 {
     ImGui::TextWrapped("%s", message);
+}
+
+std::string TruncateTextToWidth(const char* text, float max_width)
+{
+    if (!text) {
+        return "";
+    }
+    const std::string full(text);
+    if (ImGui::CalcTextSize(full.c_str()).x <= max_width) {
+        return full;
+    }
+
+    static const char* ellipsis = "...";
+    std::string out = full;
+    while (!out.empty()) {
+        out.pop_back();
+        std::string candidate = out + ellipsis;
+        if (ImGui::CalcTextSize(candidate.c_str()).x <= max_width) {
+            return candidate;
+        }
+    }
+    return ellipsis;
 }
 
 void RenderExplorer(ImVec2, ImVec2, EditorTab*)
@@ -54,255 +100,84 @@ void RenderDebug(ImVec2, ImVec2, EditorTab*)
     DrawEmptyState("No configurations");
 }
 
+void RenderEditor(ImVec2, ImVec2, EditorTab*)
+{
+    const auto& colors = GetWorkbenchTheme().colors;
+    DrawPlaceholderHeader("EDITOR", colors.primary_sidebar_text_dim);
+
+    Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
+    const auto& plugins = Scenes::ScenePluginRegistry::Instance().GetPlugins();
+
+    ImGui::TextColored(colors.primary_sidebar_text_dim, "Scene Plugins");
+    ImGui::Spacing();
+
+    const float item_h = ImGui::GetTextLineHeight() * 3.35f;
+    const float icon_size = ImGui::GetTextLineHeight() * 2.2f;
+    const float outer_pad_x = 10.0f;
+    const float inner_gap = 10.0f;
+
+    for (const auto& plugin : plugins) {
+        ImGui::PushID(plugin.id.c_str());
+        const ImVec2 cursor = ImGui::GetCursorScreenPos();
+        const float width = ImGui::GetContentRegionAvail().x;
+
+        ImGui::InvisibleButton("extension_item", ImVec2(width, item_h));
+        const bool hovered = ImGui::IsItemHovered();
+
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        const ImVec2 min = cursor;
+        const ImVec2 max = ImVec2(cursor.x + width, cursor.y + item_h);
+        const ImU32 row_bg = hovered
+            ? ImGui::GetColorU32(colors.title_bar_menu_item_hover)
+            : ImGui::GetColorU32(colors.primary_sidebar_bg);
+        const ImU32 row_border = ImGui::GetColorU32(colors.primary_sidebar_border);
+        draw->AddRectFilled(min, max, row_bg, 4.0f);
+        draw->AddRect(min, max, row_border, 4.0f, 0, 1.0f);
+
+        const ImVec2 icon_min = ImVec2(min.x + outer_pad_x, min.y + (item_h - icon_size) * 0.5f);
+        const ImVec2 icon_max = ImVec2(icon_min.x + icon_size, icon_min.y + icon_size);
+        draw->AddRectFilled(icon_min, icon_max, ImGui::GetColorU32(colors.activity_bar_active), 4.0f);
+        const ImVec2 icon_text_size = ImGui::CalcTextSize(plugin.icon_text.c_str());
+        const ImVec2 icon_text_pos = ImVec2(
+            icon_min.x + (icon_size - icon_text_size.x) * 0.5f,
+            icon_min.y + (icon_size - icon_text_size.y) * 0.5f
+        );
+        draw->AddText(icon_text_pos, ImGui::GetColorU32(colors.activity_bar_icon), plugin.icon_text.c_str());
+
+        const float text_x = icon_max.x + inner_gap;
+        const float text_w = max.x - text_x - outer_pad_x;
+        const float line_h = ImGui::GetTextLineHeight();
+        const float text_y = min.y + 6.0f;
+
+        draw->AddText(ImVec2(text_x, text_y), ImGui::GetColorU32(colors.title_bar_text), plugin.name.c_str());
+
+        const std::string info_line = TruncateTextToWidth(plugin.info.c_str(), text_w);
+        draw->AddText(ImVec2(text_x, text_y + line_h), ImGui::GetColorU32(colors.primary_sidebar_text_dim), info_line.c_str());
+
+        const std::string author_line = std::string("by ") + plugin.author;
+        draw->AddText(ImVec2(text_x, text_y + line_h * 2.0f), ImGui::GetColorU32(colors.primary_sidebar_text_dim), author_line.c_str());
+
+        if (ImGui::BeginPopupContextItem("extension_scene_context")) {
+            if (ImGui::MenuItem("New Tab")) {
+                RequestCreateSceneTab(plugin.mode);
+            }
+            ImGui::EndPopup();
+        }
+
+        ImGui::Dummy(ImVec2(0.0f, 6.0f));
+        ImGui::PopID();
+    }
+
+    ImGui::Spacing();
+    ImGui::Separator();
+    DrawEmptyState("Right-click a scene plugin and choose New Tab.");
+}
+
 void RenderExtensions(ImVec2, ImVec2, EditorTab*)
 {
     const auto& colors = GetWorkbenchTheme().colors;
     DrawPlaceholderHeader("EXTENSIONS", colors.primary_sidebar_text_dim);
     DrawEmptyState("Extension marketplace");
-}
-
-void RenderNodeLibrary(ImVec2, ImVec2, EditorTab* active_tab)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("NODE LIBRARY", colors.primary_sidebar_text_dim);
-    bool can_add = active_tab && active_tab->scene_type == SceneType::NodeEditor;
-
-    auto draw_item = [&](const char* label) {
-        if (ImGui::Selectable(label, false)) {
-            if (can_add) {
-                active_tab->pending_node_type = label;
-                active_tab->request_add_node_from_library = true;
-            }
-        }
-    };
-
-    ImGui::Text("Math");
-    draw_item("Gain");
-    draw_item("Test");
-    ImGui::Spacing();
-    ImGui::Text("Logic");
-    draw_item("If");
-    draw_item("Switch");
-}
-
-void RenderNodeAssets(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("NODE ASSETS", colors.primary_sidebar_text_dim);
-    DrawEmptyState("No node assets available");
-}
-
-void RenderSceneHierarchy(ImVec2, ImVec2, EditorTab* active_tab)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("HIERARCHY", colors.primary_sidebar_text_dim);
-    if (active_tab) {
-        ImGui::Text("Scene: %s", active_tab->name.c_str());
-    }
-    ImGui::BulletText("Camera");
-    ImGui::BulletText("Light");
-    ImGui::BulletText("Root");
-}
-
-void RenderSceneAssets(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("ASSETS", colors.primary_sidebar_text_dim);
-    DrawEmptyState("No assets loaded");
-}
-
-void RenderOutline(ImVec2, ImVec2, EditorTab* active_tab)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("OUTLINE", colors.secondary_sidebar_text);
-    if (active_tab) {
-        ImGui::Text("Active: %s", active_tab->name.c_str());
-        ImGui::BulletText("Root");
-        ImGui::BulletText("Node A");
-        ImGui::BulletText("Node B");
-    } else {
-        DrawEmptyState("No outline available");
-    }
-}
-
-void RenderNodeOutline(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
-{
-    RenderOutline(content_min, content_max, active_tab);
-    ImGui::Spacing();
-    ImGui::Text("Node Editor Outline");
-}
-
-void RenderSceneOutline(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
-{
-    RenderOutline(content_min, content_max, active_tab);
-    ImGui::Spacing();
-    ImGui::Text("Scene Outline");
-}
-
-void RenderProperties(ImVec2, ImVec2, EditorTab* active_tab)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    DrawPlaceholderHeader("PROPERTIES", colors.secondary_sidebar_text);
-    if (active_tab) {
-        ImGui::Text("Selection: %s", active_tab->name.c_str());
-    }
-    DrawEmptyState("Select an element to inspect its properties.");
-}
-
-void RenderNodeProperties(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
-{
-    RenderProperties(content_min, content_max, active_tab);
-    ImGui::Spacing();
-    ImGui::Text("Node Properties");
-
-    if (!active_tab || active_tab->scene_type != SceneType::NodeEditor) {
-        return;
-    }
-
-    EditorTab::Node* selected = nullptr;
-    if (active_tab->selected_node_id != 0) {
-        for (auto& node : active_tab->nodes) {
-            if (node.id == active_tab->selected_node_id) {
-                selected = &node;
-                break;
-            }
-        }
-    }
-
-    if (!selected) {
-        ImGui::TextColored(GetWorkbenchTheme().colors.secondary_sidebar_text, "No node selected");
-        return;
-    }
-
-    ImGui::Separator();
-    ImGui::Text("Name: %s", selected->title.c_str());
-    ImGui::Text("Type: %s", selected->type.empty() ? "Generic" : selected->type.c_str());
-
-    ImGui::Spacing();
-    ImGui::Text("Inputs:");
-    for (const auto& input : selected->inputs) {
-        ImGui::BulletText("%s", input.name.c_str());
-    }
-    ImGui::Text("Outputs:");
-    for (const auto& output : selected->outputs) {
-        ImGui::BulletText("%s", output.name.c_str());
-    }
-
-    ImGui::Spacing();
-    ImGui::Text("Lua Script (run(inputs))");
-
-    auto input_text_multiline = [](const char* label, std::string* str, const ImVec2& size) -> bool {
-        if (str->capacity() < 1024) {
-            str->reserve(1024);
-        }
-        ImGuiInputTextFlags flags = ImGuiInputTextFlags_CallbackResize;
-        auto callback = [](ImGuiInputTextCallbackData* data) -> int {
-            if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
-                auto* s = static_cast<std::string*>(data->UserData);
-                s->resize(static_cast<size_t>(data->BufTextLen));
-                data->Buf = s->data();
-            }
-            return 0;
-        };
-        if (str->empty()) {
-            str->resize(1);
-            (*str)[0] = '\0';
-        }
-        return ImGui::InputTextMultiline(label, str->data(), str->capacity() + 1, size, flags, callback, str);
-    };
-
-    const std::string default_script = NodeGraph::GetDefaultNodeScript(selected->type.empty() ? "Generic" : selected->type);
-    if (selected->script.empty()) {
-        selected->script = default_script;
-    }
-    input_text_multiline("##node_script", &selected->script, ImVec2(0, 140));
-    if (ImGui::Button("Reset to Default")) {
-        selected->script = default_script;
-    }
-}
-
-void RenderSceneProperties(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
-{
-    RenderProperties(content_min, content_max, active_tab);
-    ImGui::Spacing();
-    ImGui::Text("Scene Properties");
-}
-
-void RenderPanelOutput(ImVec2, ImVec2, EditorTab* active_tab)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    if (active_tab && active_tab->scene_type == SceneType::NodeEditor) {
-        if (ImGui::Button("Run")) {
-            auto result = NodeGraph::ExecuteGraph(*active_tab, false);
-            active_tab->node_exec_last_ok = result.success;
-            active_tab->node_exec_last_parallel = result.parallel;
-            active_tab->node_exec_last_ms = result.duration_ms;
-            active_tab->node_exec_last_error = result.error;
-            active_tab->node_exec_log = std::move(result.log);
-            active_tab->node_exec_outputs = std::move(result.outputs);
-            if (active_tab->node_exec_log.empty()) {
-                active_tab->node_exec_log.push_back(result.success ? "Execution finished." : "Execution failed.");
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Run Parallel")) {
-            auto result = NodeGraph::ExecuteGraph(*active_tab, true);
-            active_tab->node_exec_last_ok = result.success;
-            active_tab->node_exec_last_parallel = result.parallel;
-            active_tab->node_exec_last_ms = result.duration_ms;
-            active_tab->node_exec_last_error = result.error;
-            active_tab->node_exec_log = std::move(result.log);
-            active_tab->node_exec_outputs = std::move(result.outputs);
-            if (active_tab->node_exec_log.empty()) {
-                active_tab->node_exec_log.push_back(result.success ? "Execution finished." : "Execution failed.");
-            }
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Clear Log")) {
-            active_tab->node_exec_log.clear();
-            active_tab->node_exec_outputs.clear();
-            active_tab->node_exec_last_error.clear();
-        }
-
-        ImGui::Separator();
-        ImGui::Text("Last run: %s", active_tab->node_exec_last_ok ? "OK" : "Error");
-        ImGui::Text("Mode: %s", active_tab->node_exec_last_parallel ? "Parallel" : "Single");
-        ImGui::Text("Duration: %.2f ms", active_tab->node_exec_last_ms);
-        if (!active_tab->node_exec_last_ok && !active_tab->node_exec_last_error.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", active_tab->node_exec_last_error.c_str());
-        }
-
-        if (!active_tab->node_exec_outputs.empty()) {
-            ImGui::Spacing();
-            ImGui::Text("Outputs:");
-            for (const auto& entry : active_tab->node_exec_outputs) {
-                const int node_id = entry.first;
-                const auto& outputs = entry.second;
-                std::string label = "Node " + std::to_string(node_id);
-                if (ImGui::TreeNode(label.c_str())) {
-                    for (size_t i = 0; i < outputs.size(); ++i) {
-                        ImGui::BulletText("Out%zu = %s", i + 1, outputs[i].c_str());
-                    }
-                    ImGui::TreePop();
-                }
-            }
-        }
-
-        ImGui::Spacing();
-        ImGui::Text("Log:");
-        ImGui::BeginChild("node_exec_log", ImVec2(0, 0), true);
-        if (active_tab->node_exec_log.empty()) {
-            ImGui::TextColored(colors.panel_text, "No logs yet.");
-        } else {
-            for (const auto& line : active_tab->node_exec_log) {
-                ImGui::TextWrapped("%s", line.c_str());
-            }
-        }
-        ImGui::EndChild();
-        return;
-    }
-
-    ImGui::TextColored(colors.panel_text, "Build completed successfully");
 }
 
 void RenderPanelProblems(ImVec2, ImVec2, EditorTab*)
@@ -364,17 +239,18 @@ void EnsureDefaultPlugins()
         {
             { "explorer", "Explorer", RenderExplorer },
             { "search", "Search", RenderSearch },
-            { "node", "Node", RenderSceneHierarchy },
+            { "node", "Node", Scenes::Scene2DViews::RenderHierarchy },
             { "debug", "Debug", RenderDebug },
+            { "editor", "Editor", RenderEditor },
             { "extensions", "Extensions", RenderExtensions }
         },
         {
-            { "outline", "Outline", RenderSceneOutline },
-            { "properties", "Properties", RenderSceneProperties }
+            { "outline", "Outline", Scenes::Scene2DViews::RenderOutline },
+            { "properties", "Properties", Scenes::Scene2DViews::RenderProperties }
         },
         {
             { "problems", "PROBLEMS", RenderPanelProblems },
-            { "output", "OUTPUT", RenderPanelOutput },
+            { "output", "OUTPUT", Scenes::Scene2DViews::RenderPanelOutput },
             { "debug", "DEBUG", RenderPanelDebug },
             { "terminal", "TERMINAL", RenderPanelTerminal }
         },
@@ -383,6 +259,7 @@ void EnsureDefaultPlugins()
             { ActivityBarItem::Search, "search" },
             { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
+            { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
         },
         "outline",
@@ -394,17 +271,18 @@ void EnsureDefaultPlugins()
         {
             { "explorer", "Explorer", RenderExplorer },
             { "search", "Search", RenderSearch },
-            { "node", "Node", RenderSceneHierarchy },
+            { "node", "Node", Scenes::Scene3DViews::RenderHierarchy },
             { "debug", "Debug", RenderDebug },
+            { "editor", "Editor", RenderEditor },
             { "extensions", "Extensions", RenderExtensions }
         },
         {
-            { "outline", "Outline", RenderSceneOutline },
-            { "properties", "Properties", RenderSceneProperties }
+            { "outline", "Outline", Scenes::Scene3DViews::RenderOutline },
+            { "properties", "Properties", Scenes::Scene3DViews::RenderProperties }
         },
         {
             { "problems", "PROBLEMS", RenderPanelProblems },
-            { "output", "OUTPUT", RenderPanelOutput },
+            { "output", "OUTPUT", Scenes::Scene3DViews::RenderPanelOutput },
             { "debug", "DEBUG", RenderPanelDebug },
             { "terminal", "TERMINAL", RenderPanelTerminal }
         },
@@ -413,6 +291,7 @@ void EnsureDefaultPlugins()
             { ActivityBarItem::Search, "search" },
             { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
+            { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
         },
         "outline",
@@ -424,22 +303,24 @@ void EnsureDefaultPlugins()
         {
             { "explorer", "Explorer", RenderExplorer },
             { "search", "Search", RenderSearch },
-            { "node", "Node", RenderNodeLibrary },
+            { "node", "Node", Scenes::NodeEditorViews::RenderLibrary },
             { "debug", "Debug", RenderDebug },
+            { "editor", "Editor", RenderEditor },
             { "extensions", "Extensions", RenderExtensions }
         },
         {
-            { "outline", "Outline", RenderNodeOutline },
-            { "properties", "Properties", RenderNodeProperties }
+            { "outline", "Outline", Scenes::NodeEditorViews::RenderOutline },
+            { "properties", "Properties", Scenes::NodeEditorViews::RenderProperties }
         },
         {
-            { "output", "OUTPUT", RenderPanelOutput }
+            { "output", "OUTPUT", Scenes::NodeEditorViews::RenderPanelOutput }
         },
         {
             { ActivityBarItem::Explorer, "explorer" },
             { ActivityBarItem::Search, "search" },
             { ActivityBarItem::NodeEditor, "node" },
             { ActivityBarItem::Debug, "debug" },
+            { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
         },
         "outline",

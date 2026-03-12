@@ -83,6 +83,8 @@ list(APPEND EXTRA_LIBRARIES ${LUA_LIBRARY})
 file(GLOB SRC_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/scenes/**/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/services/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/command/*.cpp"
@@ -103,6 +105,8 @@ if(IMGUITRY_USE_VOLK)
     target_include_directories(example_sdl3_vulkan PRIVATE ${IMGUITRY_VOLK_SOURCE_DIR})
     target_link_libraries(example_sdl3_vulkan volk)
 endif()
+
+target_compile_definitions(example_sdl3_vulkan PRIVATE IMGUITRY_SCENES_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/src/scenes")
 
 # 链接库
 target_link_libraries(example_sdl3_vulkan

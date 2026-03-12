@@ -31,4 +31,7 @@ ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item);
 ViewDefinition GetDefaultSecondaryView(SceneType mode);
 ViewDefinition GetDefaultPanelView(SceneType mode);
 
+void RequestCreateSceneTab(SceneType mode);
+bool ConsumeCreateSceneTabRequest(SceneType& mode);
+
 } // namespace UI

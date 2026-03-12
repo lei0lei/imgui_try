@@ -8,6 +8,7 @@ enum class ActivityBarItem {
     Search,
     NodeEditor,
     Debug,
+    Editor,
     Extensions
 };
 

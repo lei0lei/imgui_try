@@ -12,7 +12,8 @@
 #include <SDL3/SDL.h>
 #include <cmath>
 
-static ImTextureID g_activity_bar_icon_textures[6] = {
+static ImTextureID g_activity_bar_icon_textures[7] = {
+    (ImTextureID)0,
     (ImTextureID)0,
     (ImTextureID)0,
     (ImTextureID)0,
@@ -25,7 +26,7 @@ static ImTextureID g_activity_bar_settings_texture = (ImTextureID)0;
 static int ToActivityBarIconIndex(ActivityBarItem item)
 {
     const int index = static_cast<int>(item);
-    if (index <= 0 || index >= 6)
+    if (index <= 0 || index >= 7)
         return 0;
     return index;
 }
@@ -55,6 +56,7 @@ void ConfigureActivityBarIcons()
         { ActivityBarItem::Search, "activity.search", "paper.png" },
         { ActivityBarItem::NodeEditor, "activity.node_editor", "3d-cube.png" },
         { ActivityBarItem::Debug, "activity.debug", "play.png" },
+        { ActivityBarItem::Editor, "activity.editor", "area.png" },
         { ActivityBarItem::Extensions, "activity.extensions", "extension.png" }
     };
 
@@ -70,6 +72,7 @@ void ClearActivityBarIcons()
     SetActivityBarIconTexture(ActivityBarItem::Search, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::NodeEditor, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Debug, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::Editor, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Extensions, (ImTextureID)0);
     SetActivityBarSettingsIconTexture((ImTextureID)0);
 }
@@ -147,12 +150,13 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
         { ActivityBarItem::Search, "Search" },
         { ActivityBarItem::NodeEditor, "Node editor" },
         { ActivityBarItem::Debug, "Debug" },
+        { ActivityBarItem::Editor, "Editor" },
         { ActivityBarItem::Extensions, "Extensions" }
     };
     float item_size = width;
     float item_y = window_pos.y + sizes.activity_bar_padding_y;
     int selected = view_model.selected_index;
-    for (int i = 0; i < 5; ++i) {
+    for (int i = 0; i < 6; ++i) {
         ImVec2 item_min = ImVec2(window_pos.x, item_y);
         ImVec2 item_max = ImVec2(window_pos.x + width, item_y + item_size);
         ImVec2 mouse_pos = ImGui::GetMousePos();

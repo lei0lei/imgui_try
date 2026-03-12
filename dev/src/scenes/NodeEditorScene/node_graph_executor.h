@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../services/editor_area_service.h"
+#include "../../services/editor_area_service.h"
 
 namespace NodeGraph {
 
