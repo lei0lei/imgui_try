@@ -1,5 +1,6 @@
 #include "scene_views.h"
 
+#include "../scene_plugin_registry.h"
 #include "../../workbench/workbench_config.h"
 
 #include <cmath>
@@ -22,8 +23,28 @@ void DrawEmpty(const char* text)
 
 } // namespace
 
-void RenderCanvas(ImVec2 content_min, ImVec2 content_max, const EditorTab& tab)
+namespace {
+const bool kRegistered2DRenderer = []() {
+    Scenes::ScenePluginRegistry::RegisterRenderer("scene.2d", [](ImVec2 content_min, ImVec2 content_max, EditorTab& tab) {
+        Scenes::Scene2DViews::RenderCanvas(content_min, content_max, tab);
+    });
+    Scenes::SceneViewContributions views{};
+    views.primary_view_id = "scene";
+    views.primary_view_title = "Scene";
+    views.primary_view_renderer = &Scenes::Scene2DViews::RenderHierarchy;
+    views.secondary_views.push_back({ "outline", "Outline", &Scenes::Scene2DViews::RenderOutline });
+    views.secondary_views.push_back({ "properties", "Properties", &Scenes::Scene2DViews::RenderProperties });
+    views.default_secondary_id = "outline";
+    views.panel_views.push_back({ "output", "OUTPUT", &Scenes::Scene2DViews::RenderPanelOutput });
+    views.default_panel_id = "output";
+    Scenes::ScenePluginRegistry::RegisterViews("scene.2d", views);
+    return true;
+}();
+}
+
+void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 {
+    (void)kRegistered2DRenderer;
     const WorkbenchTheme& theme = GetWorkbenchTheme();
     const WorkbenchThemeColors& colors = theme.colors;
     const WorkbenchThemeSizes& sizes = theme.sizes;

@@ -18,13 +18,13 @@ PrimarySidebarPart::PrimarySidebarPart(IPrimarySidebarService& service)
 	 float status_bar_h,
 	 float width,
 	 IViewRegistry& view_registry,
-	 SceneType mode,
+	 const std::string& scene_plugin_id,
 	 EditorTab* active_tab,
 	 ActivityBarItem active_item)
  {
 	 PrimarySidebarViewModel vm{};
-	 vm.active_view = view_registry.GetActiveView(mode, ViewContainer::PrimarySidebar);
-	 vm.fallback_view = UI::GetDefaultPrimaryView(mode, active_item);
+	 vm.active_view = view_registry.GetActiveView(scene_plugin_id, ViewContainer::PrimarySidebar);
+	 vm.fallback_view = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, active_item);
 	 vm.is_visible = service_.IsVisible();
 	 vm.active_item = active_item;
 	 return DrawPrimarySidebarUI(activity_bar_w, title_h, status_bar_h, width, vm, active_tab);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <string>
 #include "../services/service_collection.h"
 #include "../services/service_interfaces.h"
 #include "workbench_config.h"
@@ -69,7 +70,7 @@ private:
     bool last_sidebar_visible_ = true;
     ActivityBarItem last_activity_item_ = ActivityBarItem::None;
     ActivityBarItem last_primary_view_item_ = ActivityBarItem::None;
-    SceneType last_primary_view_scene_ = SceneType::Scene3D;
+    std::string last_primary_view_plugin_id_;
     bool has_primary_view_selection_ = false;
     int last_active_tab_index_ = -1;
     bool has_active_tab_index_ = false;

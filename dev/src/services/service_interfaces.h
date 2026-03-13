@@ -9,7 +9,6 @@ struct LayoutState;
 struct NotificationState;
 struct EditorTab;
 struct ViewDefinition;
-enum class SceneType;
 enum class ViewContainer;
 enum class PanelTab;
 
@@ -98,7 +97,6 @@ public:
     virtual int GetActiveTabIndex() const = 0;
     virtual EditorTab* GetActiveTab() = 0;
     virtual const EditorTab* GetActiveTab() const = 0;
-    virtual SceneType GetActiveSceneType(SceneType fallback) const = 0;
     virtual void AddTab(const EditorTab& tab) = 0;
     virtual void CloseTab(int index) = 0;
     virtual void ActivateTab(int index) = 0;
@@ -112,10 +110,10 @@ public:
 class IViewRegistry {
 public:
     virtual ~IViewRegistry() = default;
-    virtual void RegisterView(SceneType mode, ViewContainer container, const ViewDefinition& view) = 0;
-    virtual const std::vector<ViewDefinition>& GetViews(SceneType mode, ViewContainer container) const = 0;
-    virtual int GetActiveViewIndex(SceneType mode, ViewContainer container) const = 0;
-    virtual void SetActiveViewIndex(SceneType mode, ViewContainer container, int index) = 0;
-    virtual void SetActiveViewById(SceneType mode, ViewContainer container, const std::string& id) = 0;
-    virtual const ViewDefinition* GetActiveView(SceneType mode, ViewContainer container) const = 0;
+    virtual void RegisterView(const std::string& scene_key, ViewContainer container, const ViewDefinition& view) = 0;
+    virtual const std::vector<ViewDefinition>& GetViews(const std::string& scene_key, ViewContainer container) const = 0;
+    virtual int GetActiveViewIndex(const std::string& scene_key, ViewContainer container) const = 0;
+    virtual void SetActiveViewIndex(const std::string& scene_key, ViewContainer container, int index) = 0;
+    virtual void SetActiveViewById(const std::string& scene_key, ViewContainer container, const std::string& id) = 0;
+    virtual const ViewDefinition* GetActiveView(const std::string& scene_key, ViewContainer container) const = 0;
 };

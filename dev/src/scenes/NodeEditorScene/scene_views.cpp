@@ -1,6 +1,7 @@
 #include "scene_views.h"
 
 #include "node_graph_executor.h"
+#include "../scene_plugin_registry.h"
 #include "../../workbench/workbench_config.h"
 
 #include <algorithm>
@@ -56,8 +57,28 @@ bool InputTextMultilineStdString(const char* label, std::string* str, const ImVe
 
 } // namespace
 
+namespace {
+const bool kRegisteredNodeRenderer = []() {
+    Scenes::ScenePluginRegistry::RegisterRenderer("scene.node", [](ImVec2 content_min, ImVec2 content_max, EditorTab& tab) {
+        Scenes::NodeEditorViews::RenderCanvas(content_min, content_max, tab);
+    });
+    Scenes::SceneViewContributions views{};
+    views.primary_view_id = "node";
+    views.primary_view_title = "Node";
+    views.primary_view_renderer = &Scenes::NodeEditorViews::RenderLibrary;
+    views.secondary_views.push_back({ "outline", "Outline", &Scenes::NodeEditorViews::RenderOutline });
+    views.secondary_views.push_back({ "properties", "Properties", &Scenes::NodeEditorViews::RenderProperties });
+    views.default_secondary_id = "outline";
+    views.panel_views.push_back({ "output", "OUTPUT", &Scenes::NodeEditorViews::RenderPanelOutput });
+    views.default_panel_id = "output";
+    Scenes::ScenePluginRegistry::RegisterViews("scene.node", views);
+    return true;
+}();
+}
+
 void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 {
+    (void)kRegisteredNodeRenderer;
     const WorkbenchTheme& theme = GetWorkbenchTheme();
     const WorkbenchThemeColors& colors = theme.colors;
     const WorkbenchThemeSizes& sizes = theme.sizes;
@@ -695,7 +716,7 @@ void RenderLibrary(ImVec2, ImVec2, EditorTab* active_tab)
 {
     const auto& colors = GetWorkbenchTheme().colors;
     DrawHeader("NODE LIBRARY", colors.primary_sidebar_text_dim);
-    const bool can_add = active_tab && active_tab->scene_type == SceneType::NodeEditor;
+    const bool can_add = active_tab && active_tab->scene_plugin_id == "scene.node";
 
     auto draw_item = [&](const char* label) {
         if (ImGui::Selectable(label, false) && can_add) {
@@ -731,7 +752,7 @@ void RenderProperties(ImVec2, ImVec2, EditorTab* active_tab)
     ImGui::Spacing();
     ImGui::Text("Node Properties");
 
-    if (!active_tab || active_tab->scene_type != SceneType::NodeEditor) {
+    if (!active_tab || active_tab->scene_plugin_id != "scene.node") {
         return;
     }
 
@@ -780,7 +801,7 @@ void RenderProperties(ImVec2, ImVec2, EditorTab* active_tab)
 void RenderPanelOutput(ImVec2, ImVec2, EditorTab* active_tab)
 {
     const auto& colors = GetWorkbenchTheme().colors;
-    if (active_tab && active_tab->scene_type == SceneType::NodeEditor) {
+    if (active_tab && active_tab->scene_plugin_id == "scene.node") {
         if (ImGui::Button("Run")) {
             auto result = NodeGraph::ExecuteGraph(*active_tab, false);
             active_tab->node_exec_last_ok = result.success;

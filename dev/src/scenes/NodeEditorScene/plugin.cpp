@@ -10,7 +10,6 @@ ScenePluginDescriptor Provider::GetDescriptor() const
         "Build node graphs and execute scripts in output panel.",
         "imgui-try team",
         "NG",
-        SceneType::NodeEditor,
         "NodeEditorScene"
     };
 }

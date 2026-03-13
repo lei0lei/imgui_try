@@ -7,13 +7,33 @@
 
 namespace Scenes {
 
+using SceneCanvasRenderer = void(*)(ImVec2 content_min, ImVec2 content_max, EditorTab& tab);
+using SceneViewRenderer = void(*)(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab);
+
+struct SceneContributedView {
+    std::string id;
+    std::string title;
+    SceneViewRenderer renderer = nullptr;
+};
+
+struct SceneViewContributions {
+    std::string primary_view_id;
+    std::string primary_view_title;
+    SceneViewRenderer primary_view_renderer = nullptr;
+
+    std::vector<SceneContributedView> secondary_views;
+    std::string default_secondary_id;
+
+    std::vector<SceneContributedView> panel_views;
+    std::string default_panel_id;
+};
+
 struct ScenePluginDescriptor {
     std::string id;
     std::string name;
     std::string info;
     std::string author;
     std::string icon_text;
-    SceneType mode = SceneType::Scene3D;
     std::string folder;
 };
 

@@ -6,8 +6,8 @@
  */
 
 #include "editor_area_ui.h"
-#include "editor_scene_renderers.h"
 #include "imgui.h"
+#include "../scenes/scene_plugin_registry.h"
 #include "../workbench/workbench_config.h"
 #include <algorithm>
 
@@ -240,21 +240,21 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
 }
 
 // 绘制编辑器内容区域
-static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab, EditorSceneRegistry& registry)
+static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
 {
     if (!active_tab) return;
-    
-    if (auto renderer = registry.GetRenderer(active_tab->scene_type)) {
+
+    Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
+    if (auto renderer = Scenes::ScenePluginRegistry::Instance().GetRenderer(active_tab->scene_plugin_id)) {
         renderer(content_min, content_max, *active_tab);
     } else {
-        DrawScene3D(content_min, content_max, *active_tab);
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        draw_list->AddRectFilled(content_min, content_max, IM_COL32(30, 30, 32, 255));
+        draw_list->AddText(ImVec2(content_min.x + 16.0f, content_min.y + 16.0f), IM_COL32(220, 220, 220, 255), "No renderer registered for this scene.");
     }
 }
 
-EditorArea::EditorArea() 
-{
-    RegisterDefaultEditorSceneRenderers(scene_registry_);
-}
+EditorArea::EditorArea() = default;
 
 void EditorArea::Draw(
     float left_offset,
@@ -336,7 +336,7 @@ void EditorArea::Draw(
             // 绘制编辑器内容
             ImVec2 content_min = ImVec2(area_min.x, tab_bar_max.y);
             ImVec2 content_max = area_max;
-            DrawEditorContent(content_min, content_max, active_tab_ptr, scene_registry_);
+            DrawEditorContent(content_min, content_max, active_tab_ptr);
         } else {
             // 关闭最后一个tab后，绘制欢迎界面
             const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;

@@ -8,6 +8,7 @@
 #include "workbench_renderer.h"
 #include "../ui/view_registry_defaults.h"
 #include "../ui/view_registry_defaults_config.h"
+#include "../scenes/scene_plugin_registry.h"
 #include "../workbench/workbench_config.h"
 #include "imgui.h"
 
@@ -24,6 +25,15 @@ const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
         case ActivityBarItem::Extensions: return "extensions";
         default: return nullptr;
     }
+}
+
+std::string ResolveScenePluginId(EditorTab* active_tab)
+{
+    if (active_tab && !active_tab->scene_plugin_id.empty()) {
+        return active_tab->scene_plugin_id;
+    }
+    const std::string fallback = UI::GetDefaultScenePluginId();
+    return fallback.empty() ? std::string("__default_scene__") : fallback;
 }
 }
 
@@ -129,32 +139,30 @@ void WorkbenchRenderer::RenderPrimarySidebar(const WorkbenchMetrics& metrics)
 
 void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
 {
-    SceneType requested_mode;
-    while (UI::ConsumeCreateSceneTabRequest(requested_mode)) {
+    ::std::string requested_plugin_id;
+    ::Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
+    while (::UI::ConsumeCreateSceneTabRequest(requested_plugin_id)) {
+        const auto* descriptor = ::Scenes::ScenePluginRegistry::Instance().FindPluginById(requested_plugin_id);
+        if (!descriptor) {
+            continue;
+        }
+
         EditorTab new_tab;
         int same_type_count = 0;
         for (const auto& tab : services_.GetEditorAreaService().GetTabs()) {
-            if (tab.scene_type == requested_mode) {
+            if (tab.scene_plugin_id == requested_plugin_id) {
                 ++same_type_count;
             }
         }
 
-        if (requested_mode == SceneType::Scene2D) {
-            new_tab.name = "2D-Scene-" + std::to_string(same_type_count + 1);
-        } else if (requested_mode == SceneType::NodeEditor) {
-            new_tab.name = "Node-Graph-" + std::to_string(same_type_count + 1);
-            new_tab.node_canvas_pan = ImVec2(0.0f, 0.0f);
-            new_tab.node_canvas_zoom = 1.0f;
-        } else {
-            new_tab.name = "3D-Scene-" + std::to_string(same_type_count + 1);
-        }
+        new_tab.name = descriptor->name + "-" + std::to_string(same_type_count + 1);
 
         new_tab.path = "";
         new_tab.modified = false;
         new_tab.active = true;
-        new_tab.scene_type = requested_mode;
-        new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(requested_mode).id;
-        new_tab.panel_active_view_id = UI::GetDefaultPanelView(requested_mode).id;
+        new_tab.scene_plugin_id = requested_plugin_id;
+        new_tab.secondary_active_view_id = UI::GetDefaultSecondaryViewForPlugin(requested_plugin_id).id;
+        new_tab.panel_active_view_id = UI::GetDefaultPanelViewForPlugin(requested_plugin_id).id;
         services_.GetEditorAreaService().AddTab(new_tab);
     }
 
@@ -243,10 +251,11 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
 {
     ActivityBarResult result = activity_bar_part_.Render(title_h, status_bar_h, activity_bar_w);
     if (result.item_clicked) {
-        SceneType mode = services_.GetEditorAreaService().GetActiveSceneType(SceneType::Scene3D);
-        const ViewDefinition def = UI::GetDefaultPrimaryView(mode, result.selected_item);
+        EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
+        const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
+        const ViewDefinition def = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, result.selected_item);
         if (def.renderer) {
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, def.id);
+            services_.GetViewRegistry().SetActiveViewById(scene_plugin_id, ViewContainer::PrimarySidebar, def.id);
         }
         if (services_.GetLayoutService().IsPrimarySidebarVisible() && result.selected_item == last_activity_item_) {
             services_.GetLayoutService().SetPrimarySidebarVisible(false);
@@ -261,21 +270,21 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
 
 void WorkbenchRenderer::RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w)
 {
-    SceneType mode = services_.GetEditorAreaService().GetActiveSceneType(SceneType::Scene3D);
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
+    const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
     ActivityBarItem active_item = (ActivityBarItem)activity_bar_part_.GetService().GetSelectedItem();
     const bool selection_changed = !has_primary_view_selection_
         || last_primary_view_item_ != active_item
-        || last_primary_view_scene_ != mode;
+        || last_primary_view_plugin_id_ != scene_plugin_id;
     if (selection_changed) {
         if (const char* view_id = PrimarySidebarViewIdForItem(active_item)) {
-            services_.GetViewRegistry().SetActiveViewById(mode, ViewContainer::PrimarySidebar, view_id);
+            services_.GetViewRegistry().SetActiveViewById(scene_plugin_id, ViewContainer::PrimarySidebar, view_id);
         }
         last_primary_view_item_ = active_item;
-        last_primary_view_scene_ = mode;
+        last_primary_view_plugin_id_ = scene_plugin_id;
         has_primary_view_selection_ = true;
     }
-    primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), mode, active_tab, active_item);
+    primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), scene_plugin_id, active_tab, active_item);
 }
 
 void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w)
@@ -295,8 +304,8 @@ void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h
 
     secondary_sidebar_part_.GetService().SetVisible(true);
 
-    SceneType mode = active_tab ? active_tab->scene_type : SceneType::Scene3D;
-    SecondarySidebarResult result = secondary_sidebar_part_.Render(title_h, status_bar_h, panel_h, secondary_sidebar_w, services_.GetViewRegistry(), mode, active_tab);
+    const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
+    SecondarySidebarResult result = secondary_sidebar_part_.Render(title_h, status_bar_h, panel_h, secondary_sidebar_w, services_.GetViewRegistry(), scene_plugin_id, active_tab);
     if (result.request_close)
     {
         services_.GetLayoutService().SetSecondarySidebarVisible(false);
@@ -330,8 +339,8 @@ void WorkbenchRenderer::RenderPanel(float left_offset, float right_offset, float
         return;
     }
 
-    SceneType mode = active_tab ? active_tab->scene_type : SceneType::Scene3D;
-    panel_part_.Render(left_offset, right_offset, status_bar_h, panel_h, services_.GetViewRegistry(), mode, active_tab);
+    const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
+    panel_part_.Render(left_offset, right_offset, status_bar_h, panel_h, services_.GetViewRegistry(), scene_plugin_id, active_tab);
 }
 
 void WorkbenchRenderer::RenderTitleBar(SDL_Window* window, float title_h)

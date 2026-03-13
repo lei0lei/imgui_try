@@ -9,9 +9,6 @@
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
 #include "../scenes/scene_plugin_registry.h"
-#include "../scenes/2DScene/scene_views.h"
-#include "../scenes/3DScene/scene_views.h"
-#include "../scenes/NodeEditorScene/scene_views.h"
 #include <algorithm>
 #include <deque>
 #include <string>
@@ -20,20 +17,22 @@
 namespace UI {
 
 namespace {
-std::deque<SceneType> g_pending_scene_tab_requests;
+std::deque<std::string> g_pending_scene_tab_requests;
 }
 
-void RequestCreateSceneTab(SceneType mode)
+void RequestCreateSceneTab(const std::string& plugin_id)
 {
-    g_pending_scene_tab_requests.push_back(mode);
+    if (!plugin_id.empty()) {
+        g_pending_scene_tab_requests.push_back(plugin_id);
+    }
 }
 
-bool ConsumeCreateSceneTabRequest(SceneType& mode)
+bool ConsumeCreateSceneTabRequest(std::string& plugin_id)
 {
     if (g_pending_scene_tab_requests.empty()) {
         return false;
     }
-    mode = g_pending_scene_tab_requests.front();
+    plugin_id = g_pending_scene_tab_requests.front();
     g_pending_scene_tab_requests.pop_front();
     return true;
 }
@@ -159,7 +158,7 @@ void RenderEditor(ImVec2, ImVec2, EditorTab*)
 
         if (ImGui::BeginPopupContextItem("extension_scene_context")) {
             if (ImGui::MenuItem("New Tab")) {
-                RequestCreateSceneTab(plugin.mode);
+                RequestCreateSceneTab(plugin.id);
             }
             ImGui::EndPopup();
         }
@@ -170,7 +169,11 @@ void RenderEditor(ImVec2, ImVec2, EditorTab*)
 
     ImGui::Spacing();
     ImGui::Separator();
-    DrawEmptyState("Right-click a scene plugin and choose New Tab.");
+    if (plugins.empty()) {
+        DrawEmptyState("No scene plugins found under src/scenes. Add a scene.plugin file to each scene folder.");
+    } else {
+        DrawEmptyState("Right-click a scene plugin and choose New Tab.");
+    }
 }
 
 void RenderExtensions(ImVec2, ImVec2, EditorTab*)
@@ -234,103 +237,68 @@ void EnsureDefaultPlugins()
     if (!plugins.empty())
         return;
 
-    plugins.push_back({
-        SceneType::Scene2D,
-        {
-            { "explorer", "Explorer", RenderExplorer },
-            { "search", "Search", RenderSearch },
-            { "node", "Node", Scenes::Scene2DViews::RenderHierarchy },
-            { "debug", "Debug", RenderDebug },
-            { "editor", "Editor", RenderEditor },
-            { "extensions", "Extensions", RenderExtensions }
-        },
-        {
-            { "outline", "Outline", Scenes::Scene2DViews::RenderOutline },
-            { "properties", "Properties", Scenes::Scene2DViews::RenderProperties }
-        },
-        {
-            { "problems", "PROBLEMS", RenderPanelProblems },
-            { "output", "OUTPUT", Scenes::Scene2DViews::RenderPanelOutput },
-            { "debug", "DEBUG", RenderPanelDebug },
-            { "terminal", "TERMINAL", RenderPanelTerminal }
-        },
-        {
-            { ActivityBarItem::Explorer, "explorer" },
-            { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::Debug, "debug" },
-            { ActivityBarItem::Editor, "editor" },
-            { ActivityBarItem::Extensions, "extensions" }
-        },
-        "outline",
-        "output"
-    });
+    Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
+    const auto& scene_plugins = Scenes::ScenePluginRegistry::Instance().GetPlugins();
 
-    plugins.push_back({
-        SceneType::Scene3D,
-        {
-            { "explorer", "Explorer", RenderExplorer },
-            { "search", "Search", RenderSearch },
-            { "node", "Node", Scenes::Scene3DViews::RenderHierarchy },
-            { "debug", "Debug", RenderDebug },
-            { "editor", "Editor", RenderEditor },
-            { "extensions", "Extensions", RenderExtensions }
-        },
-        {
-            { "outline", "Outline", Scenes::Scene3DViews::RenderOutline },
-            { "properties", "Properties", Scenes::Scene3DViews::RenderProperties }
-        },
-        {
-            { "problems", "PROBLEMS", RenderPanelProblems },
-            { "output", "OUTPUT", Scenes::Scene3DViews::RenderPanelOutput },
-            { "debug", "DEBUG", RenderPanelDebug },
-            { "terminal", "TERMINAL", RenderPanelTerminal }
-        },
-        {
-            { ActivityBarItem::Explorer, "explorer" },
-            { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::Debug, "debug" },
-            { ActivityBarItem::Editor, "editor" },
-            { ActivityBarItem::Extensions, "extensions" }
-        },
-        "outline",
-        "output"
-    });
+    for (const auto& scene_plugin : scene_plugins) {
+        const auto* scene_views = Scenes::ScenePluginRegistry::Instance().GetViews(scene_plugin.id);
+        if (!scene_views) {
+            continue;
+        }
 
-    plugins.push_back({
-        SceneType::NodeEditor,
-        {
-            { "explorer", "Explorer", RenderExplorer },
-            { "search", "Search", RenderSearch },
-            { "node", "Node", Scenes::NodeEditorViews::RenderLibrary },
-            { "debug", "Debug", RenderDebug },
-            { "editor", "Editor", RenderEditor },
-            { "extensions", "Extensions", RenderExtensions }
-        },
-        {
-            { "outline", "Outline", Scenes::NodeEditorViews::RenderOutline },
-            { "properties", "Properties", Scenes::NodeEditorViews::RenderProperties }
-        },
-        {
-            { "output", "OUTPUT", Scenes::NodeEditorViews::RenderPanelOutput }
-        },
-        {
+        EditorViewPlugin plugin{};
+        plugin.plugin_id = scene_plugin.id;
+
+        plugin.primary_views.push_back({ "explorer", "Explorer", RenderExplorer });
+        plugin.primary_views.push_back({ "search", "Search", RenderSearch });
+        if (scene_views->primary_view_renderer) {
+            const std::string primary_id = scene_views->primary_view_id.empty() ? "scene" : scene_views->primary_view_id;
+            const std::string primary_title = scene_views->primary_view_title.empty() ? "Scene" : scene_views->primary_view_title;
+            plugin.primary_views.push_back({ primary_id, primary_title, scene_views->primary_view_renderer });
+        }
+        plugin.primary_views.push_back({ "debug", "Debug", RenderDebug });
+        plugin.primary_views.push_back({ "editor", "Editor", RenderEditor });
+        plugin.primary_views.push_back({ "extensions", "Extensions", RenderExtensions });
+
+        for (const auto& view : scene_views->secondary_views) {
+            if (!view.renderer) {
+                continue;
+            }
+            plugin.secondary_views.push_back({ view.id, view.title, view.renderer });
+        }
+
+        for (const auto& view : scene_views->panel_views) {
+            if (!view.renderer) {
+                continue;
+            }
+            plugin.panel_views.push_back({ view.id, view.title, view.renderer });
+        }
+
+        plugin.primary_bindings = {
             { ActivityBarItem::Explorer, "explorer" },
             { ActivityBarItem::Search, "search" },
             { ActivityBarItem::Debug, "debug" },
             { ActivityBarItem::Editor, "editor" },
             { ActivityBarItem::Extensions, "extensions" }
-        },
-        "outline",
-        "output"
-    });
+        };
+
+        plugin.default_secondary_id = !scene_views->default_secondary_id.empty()
+            ? scene_views->default_secondary_id
+            : (!plugin.secondary_views.empty() ? plugin.secondary_views.front().id : "");
+        plugin.default_panel_id = !scene_views->default_panel_id.empty()
+            ? scene_views->default_panel_id
+            : (!plugin.panel_views.empty() ? plugin.panel_views.front().id : "");
+
+        plugins.push_back(std::move(plugin));
+    }
 }
 
-const EditorViewPlugin* FindPlugin(SceneType mode)
+const EditorViewPlugin* FindPluginById(const std::string& plugin_id)
 {
     EnsureDefaultPlugins();
     const auto& plugins = PluginRegistry();
     for (const auto& plugin : plugins) {
-        if (plugin.mode == mode) {
+        if (plugin.plugin_id == plugin_id) {
             return &plugin;
         }
     }
@@ -368,13 +336,13 @@ const std::vector<DefaultViewConfig>& GetDefaultViewConfigs()
     EnsureDefaultPlugins();
     for (const auto& plugin : PluginRegistry()) {
         for (const auto& view : plugin.primary_views) {
-            configs.push_back({ plugin.mode, ViewContainer::PrimarySidebar, view.id.c_str(), view.title.c_str(), view.renderer });
+            configs.push_back({ plugin.plugin_id, ViewContainer::PrimarySidebar, view.id, view.title, view.renderer });
         }
         for (const auto& view : plugin.secondary_views) {
-            configs.push_back({ plugin.mode, ViewContainer::SecondarySidebar, view.id.c_str(), view.title.c_str(), view.renderer });
+            configs.push_back({ plugin.plugin_id, ViewContainer::SecondarySidebar, view.id, view.title, view.renderer });
         }
         for (const auto& view : plugin.panel_views) {
-            configs.push_back({ plugin.mode, ViewContainer::Panel, view.id.c_str(), view.title.c_str(), view.renderer });
+            configs.push_back({ plugin.plugin_id, ViewContainer::Panel, view.id, view.title, view.renderer });
         }
     }
 
@@ -386,7 +354,7 @@ void RegisterViewPlugin(const EditorViewPlugin& plugin)
     EnsureDefaultPlugins();
     auto& plugins = PluginRegistry();
     for (auto& existing : plugins) {
-        if (existing.mode == plugin.mode) {
+        if (existing.plugin_id == plugin.plugin_id) {
             existing = plugin;
             return;
         }
@@ -394,14 +362,24 @@ void RegisterViewPlugin(const EditorViewPlugin& plugin)
     plugins.push_back(plugin);
 }
 
-const EditorViewPlugin* GetViewPlugin(SceneType mode)
+std::string GetDefaultScenePluginId()
 {
-    return FindPlugin(mode);
+    EnsureDefaultPlugins();
+    const auto& plugins = PluginRegistry();
+    if (plugins.empty()) {
+        return {};
+    }
+    return plugins.front().plugin_id;
 }
 
-ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item)
+const EditorViewPlugin* GetViewPluginByPluginId(const std::string& plugin_id)
 {
-    const auto* plugin = FindPlugin(mode);
+    return FindPluginById(plugin_id);
+}
+
+ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item)
+{
+    const auto* plugin = FindPluginById(plugin_id);
     if (!plugin) {
         return { "empty", "Empty", nullptr };
     }
@@ -416,9 +394,9 @@ ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item)
     return { view->id, view->title, view->renderer };
 }
 
-ViewDefinition GetDefaultSecondaryView(SceneType mode)
+ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id)
 {
-    const auto* plugin = FindPlugin(mode);
+    const auto* plugin = FindPluginById(plugin_id);
     if (!plugin) {
         return { "empty", "Empty", nullptr };
     }
@@ -429,9 +407,9 @@ ViewDefinition GetDefaultSecondaryView(SceneType mode)
     return { view->id, view->title, view->renderer };
 }
 
-ViewDefinition GetDefaultPanelView(SceneType mode)
+ViewDefinition GetDefaultPanelViewForPlugin(const std::string& plugin_id)
 {
-    const auto* plugin = FindPlugin(mode);
+    const auto* plugin = FindPluginById(plugin_id);
     if (!plugin) {
         return { "empty", "Empty", nullptr };
     }

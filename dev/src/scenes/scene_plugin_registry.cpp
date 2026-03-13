@@ -33,29 +33,16 @@ std::string ToLower(std::string value)
     return value;
 }
 
-bool TryParseMode(const std::string& text, SceneType& mode)
+std::unordered_map<std::string, SceneCanvasRenderer>& GlobalRenderers()
 {
-    const std::string value = ToLower(Trim(text));
-    if (value == "scene2d" || value == "2d" || value == "2dscene") {
-        mode = SceneType::Scene2D;
-        return true;
-    }
-    if (value == "scene3d" || value == "3d" || value == "3dscene") {
-        mode = SceneType::Scene3D;
-        return true;
-    }
-    if (value == "nodeeditor" || value == "node" || value == "nodegraph") {
-        mode = SceneType::NodeEditor;
-        return true;
-    }
-    return false;
+    static std::unordered_map<std::string, SceneCanvasRenderer> renderers;
+    return renderers;
 }
 
-void AddBuiltInFallback(std::vector<ScenePluginDescriptor>& plugins)
+std::unordered_map<std::string, SceneViewContributions>& GlobalViews()
 {
-    plugins.push_back({"scene.2d", "2D Scene Tools", "Create and inspect 2D scene workflows for experiments.", "imgui-try team", "2D", SceneType::Scene2D, "fallback"});
-    plugins.push_back({"scene.3d", "3D Scene Tools", "Open a realtime 3D workspace with rendering playground.", "imgui-try team", "3D", SceneType::Scene3D, "fallback"});
-    plugins.push_back({"scene.node", "Node Editor Toolkit", "Build node graphs and execute scripts in output panel.", "imgui-try team", "NG", SceneType::NodeEditor, "fallback"});
+    static std::unordered_map<std::string, SceneViewContributions> views;
+    return views;
 }
 
 bool LoadPluginFromManifest(const std::filesystem::path& manifest_path, ScenePluginDescriptor& out)
@@ -92,11 +79,6 @@ bool LoadPluginFromManifest(const std::filesystem::path& manifest_path, ScenePlu
     out.author = kv.count("author") ? kv["author"] : "unknown";
     out.icon_text = kv.count("icon") ? kv["icon"] : "SC";
 
-    const std::string mode_text = kv.count("mode") ? kv["mode"] : "";
-    if (!TryParseMode(mode_text, out.mode)) {
-        return false;
-    }
-
     return true;
 }
 
@@ -125,9 +107,27 @@ void ScenePluginRegistry::EnsureLoaded()
     }
 }
 
+void ScenePluginRegistry::RegisterRenderer(const std::string& plugin_id, SceneCanvasRenderer renderer)
+{
+    if (plugin_id.empty() || renderer == nullptr) {
+        return;
+    }
+    GlobalRenderers()[plugin_id] = renderer;
+}
+
+void ScenePluginRegistry::RegisterViews(const std::string& plugin_id, const SceneViewContributions& views)
+{
+    if (plugin_id.empty()) {
+        return;
+    }
+    GlobalViews()[plugin_id] = views;
+}
+
 void ScenePluginRegistry::Load()
 {
     plugins_.clear();
+    renderers_.clear();
+    views_.clear();
 
     std::error_code ec;
     const std::filesystem::path root = SceneRootPath();
@@ -144,18 +144,61 @@ void ScenePluginRegistry::Load()
 
             ScenePluginDescriptor plugin;
             if (LoadPluginFromManifest(manifest, plugin)) {
+                auto it = GlobalRenderers().find(plugin.id);
+                if (it != GlobalRenderers().end()) {
+                    renderers_[plugin.id] = it->second;
+                }
+                auto vit = GlobalViews().find(plugin.id);
+                if (vit != GlobalViews().end()) {
+                    views_[plugin.id] = vit->second;
+                }
                 plugins_.push_back(std::move(plugin));
             }
         }
     }
 
-    if (plugins_.empty()) {
-        AddBuiltInFallback(plugins_);
+    for (const auto& plugin : plugins_) {
+        auto it = GlobalRenderers().find(plugin.id);
+        if (it != GlobalRenderers().end()) {
+            renderers_[plugin.id] = it->second;
+        }
+        auto vit = GlobalViews().find(plugin.id);
+        if (vit != GlobalViews().end()) {
+            views_[plugin.id] = vit->second;
+        }
     }
 
     std::sort(plugins_.begin(), plugins_.end(), [](const ScenePluginDescriptor& a, const ScenePluginDescriptor& b) {
         return a.name < b.name;
     });
+}
+
+const ScenePluginDescriptor* ScenePluginRegistry::FindPluginById(const std::string& plugin_id) const
+{
+    for (const auto& plugin : plugins_) {
+        if (plugin.id == plugin_id) {
+            return &plugin;
+        }
+    }
+    return nullptr;
+}
+
+SceneCanvasRenderer ScenePluginRegistry::GetRenderer(const std::string& plugin_id) const
+{
+    auto it = renderers_.find(plugin_id);
+    if (it == renderers_.end()) {
+        return nullptr;
+    }
+    return it->second;
+}
+
+const SceneViewContributions* ScenePluginRegistry::GetViews(const std::string& plugin_id) const
+{
+    auto it = views_.find(plugin_id);
+    if (it == views_.end()) {
+        return nullptr;
+    }
+    return &it->second;
 }
 
 } // namespace Scenes

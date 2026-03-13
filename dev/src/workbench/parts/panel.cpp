@@ -19,12 +19,12 @@ PanelPart::PanelPart(IPanelService& service)
 	 float status_bar_h,
 	 float panel_h,
 	 IViewRegistry& view_registry,
-	 SceneType mode,
+	 const std::string& scene_plugin_id,
 	 EditorTab* active_tab)
  {
 	 PanelViewModel vm{};
-	 vm.views = &view_registry.GetViews(mode, ViewContainer::Panel);
-	 const auto& views = view_registry.GetViews(mode, ViewContainer::Panel);
+	 vm.views = &view_registry.GetViews(scene_plugin_id, ViewContainer::Panel);
+	 const auto& views = view_registry.GetViews(scene_plugin_id, ViewContainer::Panel);
 	 auto find_view_by_id = [&](const std::string& id) -> const ViewDefinition* {
 		 for (const auto& view : views) {
 			 if (view.id == id) {
@@ -49,7 +49,7 @@ PanelPart::PanelPart(IPanelService& service)
 		 active_view = (active_index >= 0) ? &views[active_index] : nullptr;
 	 }
 	 if (!active_view || !active_view->renderer) {
-		 const ViewDefinition def = UI::GetDefaultPanelView(mode);
+		 const ViewDefinition def = UI::GetDefaultPanelViewForPlugin(scene_plugin_id);
 		 if (def.renderer) {
 			 active_view = find_view_by_id(def.id);
 			 active_index = find_index_by_id(def.id);

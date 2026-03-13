@@ -1,8 +1,8 @@
 #pragma once
 
-#include <array>
 #include <functional>
 #include <string>
+#include <array>
 #include <unordered_map>
 #include <vector>
 #include "editor_area_service.h"
@@ -24,18 +24,22 @@ struct ViewDefinition {
 
 class ViewRegistry : public IViewRegistry {
 public:
-    void RegisterView(SceneType mode, ViewContainer container, const ViewDefinition& view) override;
-    const std::vector<ViewDefinition>& GetViews(SceneType mode, ViewContainer container) const override;
-    int GetActiveViewIndex(SceneType mode, ViewContainer container) const override;
-    void SetActiveViewIndex(SceneType mode, ViewContainer container, int index) override;
-    void SetActiveViewById(SceneType mode, ViewContainer container, const std::string& id) override;
-    const ViewDefinition* GetActiveView(SceneType mode, ViewContainer container) const override;
+    void RegisterView(const std::string& scene_key, ViewContainer container, const ViewDefinition& view) override;
+    const std::vector<ViewDefinition>& GetViews(const std::string& scene_key, ViewContainer container) const override;
+    int GetActiveViewIndex(const std::string& scene_key, ViewContainer container) const override;
+    void SetActiveViewIndex(const std::string& scene_key, ViewContainer container, int index) override;
+    void SetActiveViewById(const std::string& scene_key, ViewContainer container, const std::string& id) override;
+    const ViewDefinition* GetActiveView(const std::string& scene_key, ViewContainer container) const override;
 
 private:
-    static int SceneIndex(SceneType type);
     static int ContainerIndex(ViewContainer container);
+    static std::string NormalizeSceneKey(const std::string& scene_key);
 
-    std::array<std::array<std::vector<ViewDefinition>, 3>, 3> views_{};
-    std::array<std::array<int, 3>, 3> active_indices_{};
-    std::array<std::array<std::unordered_map<std::string, int>, 3>, 3> id_to_index_{};
+    struct SceneBucket {
+        std::array<std::vector<ViewDefinition>, 3> views{};
+        std::array<int, 3> active_indices{};
+        std::array<std::unordered_map<std::string, int>, 3> id_to_index{};
+    };
+
+    mutable std::unordered_map<std::string, SceneBucket> scene_buckets_{};
 };

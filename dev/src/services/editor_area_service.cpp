@@ -23,12 +23,6 @@ const EditorTab* EditorAreaService::GetActiveTab() const {
     return &tabs_[idx];
 }
 
-SceneType EditorAreaService::GetActiveSceneType(SceneType fallback) const {
-    const EditorTab* tab = GetActiveTab();
-    if (!tab) return fallback;
-    return tab->scene_type;
-}
-
 void EditorAreaService::AddTab(const EditorTab& tab) {
     for (auto& t : tabs_) t.active = false;
     tabs_.push_back(tab);

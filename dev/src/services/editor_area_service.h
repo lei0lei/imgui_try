@@ -5,20 +5,13 @@
 #include "imgui.h"
 #include "service_interfaces.h"
 
-// 场景类型
-enum class SceneType {
-    Scene2D,
-    Scene3D,
-    NodeEditor
-};
-
 // 编辑器标签页
 struct EditorTab {
     std::string name;
     std::string path;
     bool modified = false;
     bool active = false;
-    SceneType scene_type = SceneType::Scene3D;
+    std::string scene_plugin_id;
     std::string secondary_active_view_id;
     std::string panel_active_view_id;
     ImVec2 node_canvas_pan = ImVec2(0.0f, 0.0f);
@@ -82,7 +75,6 @@ public:
     int GetActiveTabIndex() const override;
     EditorTab* GetActiveTab() override;
     const EditorTab* GetActiveTab() const override;
-    SceneType GetActiveSceneType(SceneType fallback = SceneType::Scene3D) const override;
     void AddTab(const EditorTab& tab) override;
     void CloseTab(int index) override;
     void ActivateTab(int index) override;

@@ -3,7 +3,6 @@
 #include <functional>
 #include <vector>
 #include "../services/editor_area_service.h"
-#include "editor_scene_registry.h"
 
 namespace UI {
 
@@ -31,7 +30,7 @@ public:
     );
 
 private:
-    EditorSceneRegistry scene_registry_;
+    // Scene renderers are resolved via ScenePluginRegistry.
 };
 
 } // namespace UI

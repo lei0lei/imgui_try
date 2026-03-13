@@ -19,13 +19,13 @@ SecondarySidebarPart::SecondarySidebarPart(ISecondarySidebarService& service)
 	 float panel_h,
 	 float width,
 	 IViewRegistry& view_registry,
-	 SceneType mode,
+	 const std::string& scene_plugin_id,
 	 EditorTab* active_tab)
  {
 	 SecondarySidebarViewModel vm{};
 	 vm.is_visible = service_.IsVisible();
 	 vm.has_active_tab = (active_tab != nullptr);
-	const auto& views = view_registry.GetViews(mode, ViewContainer::SecondarySidebar);
+	const auto& views = view_registry.GetViews(scene_plugin_id, ViewContainer::SecondarySidebar);
 	 auto find_view_by_id = [&](const std::string& id) -> const ViewDefinition* {
 		 for (const auto& view : views) {
 			 if (view.id == id) {
@@ -41,7 +41,7 @@ SecondarySidebarPart::SecondarySidebarPart(ISecondarySidebarService& service)
 		 active_view = find_view_by_id(active_tab->secondary_active_view_id);
 	 }
 	 if (!active_view || !active_view->renderer) {
-		 const ViewDefinition def = UI::GetDefaultSecondaryView(mode);
+		 const ViewDefinition def = UI::GetDefaultSecondaryViewForPlugin(scene_plugin_id);
 		 if (def.renderer) {
 			 active_view = find_view_by_id(def.id);
 			 if (active_tab && active_view) {

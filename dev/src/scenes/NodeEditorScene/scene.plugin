@@ -4,4 +4,4 @@ name=Node Editor Toolkit
 info=Build node graphs and execute scripts in output panel.
 author=imgui-try team
 icon=NG
-mode=NodeEditor
+mode=2

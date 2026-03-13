@@ -14,7 +14,7 @@
 		 float status_bar_h,
 		 float panel_h,
 		 IViewRegistry& view_registry,
-		 SceneType mode,
+		 const std::string& scene_plugin_id,
 		 EditorTab* active_tab
 	 );
 

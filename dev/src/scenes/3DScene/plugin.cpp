@@ -10,7 +10,6 @@ ScenePluginDescriptor Provider::GetDescriptor() const
         "Open a realtime 3D workspace with rendering playground.",
         "imgui-try team",
         "3D",
-        SceneType::Scene3D,
         "3DScene"
     };
 }

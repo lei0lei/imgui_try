@@ -9,68 +9,81 @@
 #include "imgui.h"
 #include "../services/editor_area_service.h"
 #include "../ui/view_registry_defaults.h"
+#include "../scenes/scene_plugin_registry.h"
+
+namespace {
+
+const Scenes::ScenePluginDescriptor* ResolveDefaultPlugin()
+{
+    Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
+    const std::string preferred_id = UI::GetDefaultScenePluginId();
+    if (!preferred_id.empty()) {
+        if (const auto* preferred = Scenes::ScenePluginRegistry::Instance().FindPluginById(preferred_id)) {
+            return preferred;
+        }
+    }
+
+    const auto& plugins = Scenes::ScenePluginRegistry::Instance().GetPlugins();
+    if (plugins.empty()) {
+        return nullptr;
+    }
+    return &plugins.front();
+}
+
+EditorTab MakeDefaultSceneTab(const IEditorAreaService& editor_area)
+{
+    EditorTab tab;
+    const auto* plugin = ResolveDefaultPlugin();
+    if (plugin) {
+        int same_type_count = 0;
+        for (const auto& existing : editor_area.GetTabs()) {
+            if (existing.scene_plugin_id == plugin->id) {
+                ++same_type_count;
+            }
+        }
+
+        tab.name = plugin->name + "-" + std::to_string(same_type_count + 1);
+        tab.scene_plugin_id = plugin->id;
+        tab.secondary_active_view_id = UI::GetDefaultSecondaryViewForPlugin(tab.scene_plugin_id).id;
+        tab.panel_active_view_id = UI::GetDefaultPanelViewForPlugin(tab.scene_plugin_id).id;
+    } else {
+        tab.name = "Untitled-" + std::to_string(editor_area.GetTabs().size() + 1);
+    }
+
+    tab.path = "";
+    tab.modified = false;
+    tab.active = true;
+    return tab;
+}
+
+}
 
 void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
 {
 	service.Register(CommandId::FileNew2D, [ctx]() mutable {
-		EditorTab new_tab;
-		new_tab.name = "2D-Scene-" + std::to_string(ctx.editor_area.GetTabs().size() + 1);
-		new_tab.path = "";
-		new_tab.modified = false;
-		new_tab.active = true;
-		new_tab.scene_type = SceneType::Scene2D;
-		new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(SceneType::Scene2D).id;
-		new_tab.panel_active_view_id = UI::GetDefaultPanelView(SceneType::Scene2D).id;
+		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		ctx.editor_area.AddTab(new_tab);
 	});
 
 	service.Register(CommandId::FileNew, [ctx]() mutable {
-		EditorTab new_tab;
-		new_tab.name = "3D-Scene-" + std::to_string(ctx.editor_area.GetTabs().size() + 1);
-		new_tab.path = "";
-		new_tab.modified = false;
-		new_tab.active = true;
-		new_tab.scene_type = SceneType::Scene3D;
-		new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(SceneType::Scene3D).id;
-		new_tab.panel_active_view_id = UI::GetDefaultPanelView(SceneType::Scene3D).id;
+		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		ctx.editor_area.AddTab(new_tab);
 	});
 
 	service.Register(CommandId::FileNew3D, [ctx]() mutable {
-		EditorTab new_tab;
-		new_tab.name = "3D-Scene-" + std::to_string(ctx.editor_area.GetTabs().size() + 1);
-		new_tab.path = "";
-		new_tab.modified = false;
-		new_tab.active = true;
-		new_tab.scene_type = SceneType::Scene3D;
-		new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(SceneType::Scene3D).id;
-		new_tab.panel_active_view_id = UI::GetDefaultPanelView(SceneType::Scene3D).id;
+		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		ctx.editor_area.AddTab(new_tab);
 	});
 
 	service.Register(CommandId::FileNewNodeGraph, [ctx]() mutable {
-		EditorTab new_tab;
-		new_tab.name = "Node-Graph-" + std::to_string(ctx.editor_area.GetTabs().size() + 1);
-		new_tab.path = "";
-		new_tab.modified = false;
-		new_tab.active = true;
-		new_tab.scene_type = SceneType::NodeEditor;
-		new_tab.node_canvas_pan = ImVec2(0.0f, 0.0f);
-		new_tab.node_canvas_zoom = 1.0f;
-		new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(SceneType::NodeEditor).id;
-		new_tab.panel_active_view_id = UI::GetDefaultPanelView(SceneType::NodeEditor).id;
+		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		ctx.editor_area.AddTab(new_tab);
 	});
 
 	service.Register(CommandId::FileOpen, [ctx]() mutable {
-		EditorTab new_tab;
+		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		new_tab.name = "example.cpp";
 		new_tab.path = "C:/path/to/example.cpp";
-		new_tab.modified = false;
-		new_tab.active = true;
-		new_tab.scene_type = SceneType::Scene3D;
-		new_tab.secondary_active_view_id = UI::GetDefaultSecondaryView(SceneType::Scene3D).id;
-		new_tab.panel_active_view_id = UI::GetDefaultPanelView(SceneType::Scene3D).id;
 		ctx.editor_area.AddTab(new_tab);
 	});
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 #include "../services/view_registry.h"
 #include "../core/workbench_types.h"
@@ -7,15 +8,15 @@
 namespace UI {
 
 struct DefaultViewConfig {
-    SceneType mode;
+    std::string plugin_id;
     ViewContainer container;
-    const char* id;
-    const char* title;
+    std::string id;
+    std::string title;
     ViewRenderer renderer;
 };
 
 struct EditorViewPlugin {
-    SceneType mode;
+    std::string plugin_id;
     std::vector<ViewDefinition> primary_views;
     std::vector<ViewDefinition> secondary_views;
     std::vector<ViewDefinition> panel_views;
@@ -26,12 +27,13 @@ struct EditorViewPlugin {
 
 const std::vector<DefaultViewConfig>& GetDefaultViewConfigs();
 void RegisterViewPlugin(const EditorViewPlugin& plugin);
-const EditorViewPlugin* GetViewPlugin(SceneType mode);
-ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item);
-ViewDefinition GetDefaultSecondaryView(SceneType mode);
-ViewDefinition GetDefaultPanelView(SceneType mode);
+std::string GetDefaultScenePluginId();
+const EditorViewPlugin* GetViewPluginByPluginId(const std::string& plugin_id);
+ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item);
+ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id);
+ViewDefinition GetDefaultPanelViewForPlugin(const std::string& plugin_id);
 
-void RequestCreateSceneTab(SceneType mode);
-bool ConsumeCreateSceneTabRequest(SceneType& mode);
+void RequestCreateSceneTab(const std::string& plugin_id);
+bool ConsumeCreateSceneTabRequest(std::string& plugin_id);
 
 } // namespace UI

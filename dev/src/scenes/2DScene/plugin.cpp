@@ -10,7 +10,6 @@ ScenePluginDescriptor Provider::GetDescriptor() const
         "Create and inspect 2D scene workflows for experiments.",
         "imgui-try team",
         "2D",
-        SceneType::Scene2D,
         "2DScene"
     };
 }

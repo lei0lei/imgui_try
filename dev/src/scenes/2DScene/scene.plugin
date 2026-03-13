@@ -4,4 +4,4 @@ name=2D Scene Tools
 info=Create and inspect 2D scene workflows for experiments.
 author=imgui-try team
 icon=2D
-mode=Scene2D
+mode=0

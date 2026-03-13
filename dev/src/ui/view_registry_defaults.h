@@ -6,9 +6,10 @@
 namespace UI {
 
 void RegisterDefaultViews(IViewRegistry& registry);
+std::string GetDefaultScenePluginId();
 
-ViewDefinition GetDefaultPrimaryView(SceneType mode, ActivityBarItem item);
-ViewDefinition GetDefaultSecondaryView(SceneType mode);
-ViewDefinition GetDefaultPanelView(SceneType mode);
+ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item);
+ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id);
+ViewDefinition GetDefaultPanelViewForPlugin(const std::string& plugin_id);
 
 } // namespace UI
