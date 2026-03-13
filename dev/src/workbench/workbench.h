@@ -13,8 +13,6 @@ typedef struct VkAllocationCallbacks VkAllocationCallbacks;
 #include "parts/status_bar.h"
 #include "parts/activity_bar.h"
 #include "parts/primary_sidebar.h"
-#include "parts/secondary_sidebar.h"
-#include "parts/panel.h"
 #include "parts/editor_area.h"
 #include "../services/service_collection.h"
 #include "../services/service_interfaces.h"
@@ -44,21 +42,13 @@ public:
     void RenderStatusBar(const WorkbenchMetrics& metrics);
     void RenderPrimarySidebar(const WorkbenchMetrics& metrics);
     void RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
-    void RenderPanel(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
-    void RenderSecondarySidebar(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
-    void RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before);
     LayoutInfo ComputeLayout(const WorkbenchMetrics& metrics);
     // 标题栏事件已改为命令处理
-
-    // 状态暴露（如有需要）
-    bool IsPanelVisible() const { return services_.GetLayoutService().IsPanelVisible(); }
-    bool IsSecondarySidebarVisible() const { return services_.GetLayoutService().IsSecondarySidebarVisible(); }
 
     // 新增：primary sidebar 显示状态
     bool IsPrimarySidebarVisible() const { return services_.GetLayoutService().IsPrimarySidebarVisible(); }
     void TogglePrimarySidebar();
     void SetPrimarySidebarVisible(bool visible);
-    void CloseSecondarySidebar();
 
     // 通知 service 访问
     INotificationService& GetNotificationService() { return services_.GetNotificationService(); }
@@ -67,10 +57,6 @@ public:
     ILayoutService& GetLayoutService() { return services_.GetLayoutService(); }
     const ILayoutService& GetLayoutService() const { return services_.GetLayoutService(); }
 
-    // 面板 service 访问
-    IPanelService& GetPanelService() { return services_.GetPanelService(); }
-    const IPanelService& GetPanelService() const { return services_.GetPanelService(); }
-
     // ActivityBar service 访问
     IActivityBarService& GetActivityBarService() { return services_.GetActivityBarService(); }
     const IActivityBarService& GetActivityBarService() const { return services_.GetActivityBarService(); }
@@ -78,10 +64,6 @@ public:
     // PrimarySidebar service 访问
     IPrimarySidebarService& GetPrimarySidebarService() { return services_.GetPrimarySidebarService(); }
     const IPrimarySidebarService& GetPrimarySidebarService() const { return services_.GetPrimarySidebarService(); }
-
-    // SecondarySidebar service 访问
-    ISecondarySidebarService& GetSecondarySidebarService() { return services_.GetSecondarySidebarService(); }
-    const ISecondarySidebarService& GetSecondarySidebarService() const { return services_.GetSecondarySidebarService(); }
 
     // 处理窗口和菜单动作
     void HandleWindowAndMenuActions(bool& done, SDL_Window* window);
@@ -95,10 +77,8 @@ private:
     ServiceCollection services_;
     TitleBarPart title_bar_part_;
     StatusBarPart status_bar_part_;
-    PanelPart panel_part_;
     ActivityBarPart activity_bar_part_;
     PrimarySidebarPart primary_sidebar_part_;
-    SecondarySidebarPart secondary_sidebar_part_;
     EditorAreaPart editor_area_part_;
     WorkbenchConfig config_;
     LayoutManager layout_manager_;

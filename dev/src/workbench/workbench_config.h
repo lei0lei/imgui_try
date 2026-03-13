@@ -75,32 +75,6 @@ struct WorkbenchThemeColors {
     ImVec4 editor_tab_close_icon;
     ImVec4 editor_tab_border;
     ImVec4 editor_tab_active_indicator;
-
-    ImVec4 editor_2d_bg;
-    ImVec4 editor_2d_grid;
-    ImVec4 editor_2d_rect_fill;
-    ImVec4 editor_2d_rect_border;
-    ImVec4 editor_2d_circle_fill;
-    ImVec4 editor_2d_circle_border;
-    ImVec4 editor_2d_wave;
-    ImVec4 editor_2d_title;
-    ImVec4 editor_2d_hint;
-
-    ImVec4 editor_3d_bg_top;
-    ImVec4 editor_3d_bg_bottom;
-    ImVec4 editor_3d_grid;
-    ImVec4 editor_3d_cube;
-    ImVec4 editor_3d_title;
-    ImVec4 editor_3d_hint;
-
-    ImVec4 editor_node_bg;
-    ImVec4 editor_node_grid_minor;
-    ImVec4 editor_node_grid_major;
-    ImVec4 editor_node_axis;
-    ImVec4 editor_node_overlay_bg;
-    ImVec4 editor_node_overlay_hover;
-    ImVec4 editor_node_overlay_active;
-    ImVec4 editor_node_overlay_text;
 };
 
 struct WorkbenchThemeSizes {
@@ -164,37 +138,6 @@ struct WorkbenchThemeSizes {
 
     float editor_welcome_title_offset_y;
     float editor_welcome_hint_offset_y;
-
-    float editor_2d_grid_size;
-    float editor_2d_grid_line_thickness;
-    float editor_2d_rect_size;
-    float editor_2d_rect_outline;
-    float editor_2d_circle_radius;
-    float editor_2d_circle_outline;
-    float editor_2d_wave_thickness;
-    float editor_content_padding;
-
-    float editor_3d_grid_spacing;
-    float editor_3d_grid_line_thickness;
-    float editor_3d_horizontal_line_thickness;
-    float editor_3d_grid_lines;
-    float editor_3d_horizontal_lines;
-    float editor_3d_orbit_radius;
-    float editor_3d_cube_size;
-    float editor_3d_cube_outline;
-
-    float editor_node_grid_size;
-    float editor_node_grid_thickness;
-    float editor_node_grid_major_thickness;
-    float editor_node_axis_thickness;
-    float editor_node_grid_draw_min;
-    float editor_node_grid_draw_max;
-    float editor_node_grid_minor_threshold;
-    float editor_node_zoom_min;
-    float editor_node_zoom_max;
-    float editor_node_zoom_step;
-    float editor_node_overlay_padding;
-    float editor_node_overlay_rounding;
 };
 
 struct WorkbenchTheme {

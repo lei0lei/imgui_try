@@ -12,8 +12,7 @@ struct EditorTab {
     bool modified = false;
     bool active = false;
     std::string scene_plugin_id;
-    std::string secondary_active_view_id;
-    std::string panel_active_view_id;
+    std::unordered_map<std::string, std::string> scene_ui_state;
     ImVec2 node_canvas_pan = ImVec2(0.0f, 0.0f);
     float node_canvas_zoom = 1.0f;
     // Node graph execution status
@@ -79,21 +78,11 @@ public:
     void CloseTab(int index) override;
     void ActivateTab(int index) override;
     void MoveTab(int from_index, int to_index) override;
-    bool GetPanelVisibleForActiveTab(bool fallback) const override;
-    bool GetSecondaryVisibleForActiveTab(bool fallback) const override;
-    bool SetPanelVisibleForActiveTab(bool visible) override;
-    bool SetSecondaryVisibleForActiveTab(bool visible) override;
     void CloseActiveTab();
     void SetTabs(const std::vector<EditorTab>& tabs);
 private:
-    struct TabLayoutState {
-        bool panel_visible = false;
-        bool secondary_sidebar_visible = false;
-    };
-
     void RebuildActiveTabIndex();
 
     std::vector<EditorTab> tabs_;
-    std::vector<TabLayoutState> tab_layout_states_;
     int active_tab_index_ = -1;
 };

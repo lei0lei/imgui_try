@@ -14,8 +14,6 @@
 		 float right_offset,
 		 float title_h,
 		 float status_bar_h,
-		 float panel_h,
-		 bool panel_visible,
 		 bool block_tab_clicks
 	 );
 

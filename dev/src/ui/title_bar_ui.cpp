@@ -160,7 +160,7 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
             const char* items[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
             if (i == 0) { items[0] = "Save"; items[1] = "Exit"; }
             else if (i == 1) { items[0] = "Undo"; items[1] = "Redo"; }
-            else if (i == 2) { items[0] = "Explorer"; items[1] = "Console"; }
+            else if (i == 2) { items[0] = "Explorer"; }
             else if (i == 3) { items[0] = "About"; }
             float menu_item_h = sizes.title_menu_item_h;
             int item_count = 0; for (int j = 0; j < 5; j++) if (items[j]) item_count++;
@@ -196,7 +196,6 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
                     } else if (i == 2) {
                         if (view_model.trigger_command) {
                             if (j == 0) view_model.trigger_command(CommandId::ViewExplorer);
-                            else if (j == 1) view_model.trigger_command(CommandId::ViewConsole);
                         }
                     } else if (i == 3) {
                         if (view_model.trigger_command) {
@@ -237,7 +236,7 @@ static float RenderLayoutAndWindowButtons(SDL_Window* window,
     const float layout_btn_w = sizes.title_layout_btn_w;
     const float layout_btn_h = title_h;
     float btn_start_x = io.DisplaySize.x - btn_w * 3;
-    float layout_start_x = btn_start_x - layout_btn_w * 3;
+    float layout_start_x = btn_start_x - layout_btn_w;
     ImVec4 btn_normal = ImVec4(0, 0, 0, 0);
     ImVec4 btn_hover = colors.title_bar_button_hover;
     ImVec4 btn_active = colors.title_bar_button_active;
@@ -268,29 +267,13 @@ static float RenderLayoutAndWindowButtons(SDL_Window* window,
     auto draw_layout_btn = [&](float x_pos, const char* id, auto draw_icon) -> bool {
         return draw_square_btn(x_pos, layout_btn_w, layout_btn_h, id, btn_normal, btn_hover, btn_active, draw_icon);
     };
-    bool btn_layout_left = draw_layout_btn(layout_start_x + layout_btn_w * 0, "layout_left", [&](ImVec2 c, bool h){
+    bool btn_layout_left = draw_layout_btn(layout_start_x, "layout_left", [&](ImVec2 c, bool h){
         float alpha = view_model.primary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
         float half = sizes.title_layout_icon_size;
         draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
         if (view_model.primary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y-(half-2.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-2.0f)), col);
         else draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-    });
-    bool btn_layout_bottom = draw_layout_btn(layout_start_x + layout_btn_w * 1, "layout_bottom", [&](ImVec2 c, bool h){
-        float alpha = view_model.panel_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
-        ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
-        float half = sizes.title_layout_icon_size;
-        draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (view_model.panel_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y+(half*0.12f)), ImVec2(c.x+(half-1.0f), c.y+(half*0.75f)), col);
-        else draw_list->AddRect(ImVec2(c.x-half, c.y+(half*0.12f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-    });
-    bool btn_layout_right = draw_layout_btn(layout_start_x + layout_btn_w * 2, "layout_right", [&](ImVec2 c, bool h){
-        float alpha = view_model.secondary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
-        ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
-        float half = sizes.title_layout_icon_size;
-        draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (view_model.secondary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x+(half*0.25f), c.y-(half-2.0f)), ImVec2(c.x+(half-1.0f), c.y+(half-2.0f)), col);
-        else draw_list->AddRect(ImVec2(c.x+(half*0.25f), c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
     });
     bool btn_min = draw_control_btn(btn_start_x, "min", btn_normal, btn_hover, btn_active, [&](ImVec2 center, bool hovered) {
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_control_icon.x, colors.title_bar_control_icon.y, colors.title_bar_control_icon.z, hovered ? 1.0f : 0.8f));
@@ -314,8 +297,6 @@ static float RenderLayoutAndWindowButtons(SDL_Window* window,
     });
     if (view_model.trigger_command) {
         if (btn_layout_left) view_model.trigger_command(CommandId::TogglePrimarySidebar);
-        if (btn_layout_bottom) view_model.trigger_command(CommandId::TogglePanel);
-        if (btn_layout_right) view_model.trigger_command(CommandId::ToggleSecondarySidebar);
         if (btn_min) view_model.trigger_command(CommandId::WindowMinimize);
         if (btn_max) view_model.trigger_command(CommandId::WindowMaximize);
         if (btn_close) view_model.trigger_command(CommandId::WindowClose);

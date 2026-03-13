@@ -184,44 +184,6 @@ void RenderExtensions(ImVec2, ImVec2, EditorTab*)
     DrawEmptyState("Extension marketplace");
 }
 
-void RenderPanelProblems(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_text, "No problems detected");
-}
-
-void RenderPanelTerminal(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_terminal_prompt, "$ ");
-    ImGui::SameLine();
-    ImGui::TextColored(colors.panel_text, "Ready");
-}
-
-void RenderPanelConsole(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_text, "Console output goes here.");
-}
-
-void RenderPanelDebug(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_text, "Debug console");
-}
-
-void RenderPanelTimeline(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_text, "Timeline is empty.");
-}
-
-void RenderPanelProfiler(ImVec2, ImVec2, EditorTab*)
-{
-    const auto& colors = GetWorkbenchTheme().colors;
-    ImGui::TextColored(colors.panel_text, "Profiler idle.");
-}
-
 } // namespace
 
 namespace {
@@ -258,33 +220,8 @@ void EnsureDefaultPlugins()
     const auto& scene_plugins = Scenes::ScenePluginRegistry::Instance().GetPlugins();
 
     for (const auto& scene_plugin : scene_plugins) {
-        const auto* scene_views = Scenes::ScenePluginRegistry::Instance().GetViews(scene_plugin.id);
-
         EditorViewPlugin plugin{};
         plugin.plugin_id = scene_plugin.id;
-
-        if (scene_views) {
-            for (const auto& view : scene_views->secondary_views) {
-                if (!view.renderer) {
-                    continue;
-                }
-                plugin.secondary_views.push_back({ view.id, view.title, view.renderer });
-            }
-
-            for (const auto& view : scene_views->panel_views) {
-                if (!view.renderer) {
-                    continue;
-                }
-                plugin.panel_views.push_back({ view.id, view.title, view.renderer });
-            }
-
-            plugin.default_secondary_id = !scene_views->default_secondary_id.empty()
-                ? scene_views->default_secondary_id
-                : (!plugin.secondary_views.empty() ? plugin.secondary_views.front().id : "");
-            plugin.default_panel_id = !scene_views->default_panel_id.empty()
-                ? scene_views->default_panel_id
-                : (!plugin.panel_views.empty() ? plugin.panel_views.front().id : "");
-        }
 
         plugins.push_back(std::move(plugin));
     }
@@ -334,12 +271,6 @@ const std::vector<DefaultViewConfig>& GetDefaultViewConfigs()
     for (const auto& plugin : PluginRegistry()) {
         for (const auto& view : plugin.primary_views) {
             configs.push_back({ plugin.plugin_id, ViewContainer::PrimarySidebar, view.id, view.title, view.renderer });
-        }
-        for (const auto& view : plugin.secondary_views) {
-            configs.push_back({ plugin.plugin_id, ViewContainer::SecondarySidebar, view.id, view.title, view.renderer });
-        }
-        for (const auto& view : plugin.panel_views) {
-            configs.push_back({ plugin.plugin_id, ViewContainer::Panel, view.id, view.title, view.renderer });
         }
     }
 
@@ -393,32 +324,6 @@ ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, Acti
         return { "empty", "Empty", nullptr };
     }
     const auto* view = FindViewById(plugin->primary_views, id);
-    if (!view) {
-        return { "empty", "Empty", nullptr };
-    }
-    return { view->id, view->title, view->renderer };
-}
-
-ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id)
-{
-    const auto* plugin = FindPluginById(plugin_id);
-    if (!plugin) {
-        return { "empty", "Empty", nullptr };
-    }
-    const auto* view = FindViewById(plugin->secondary_views, plugin->default_secondary_id);
-    if (!view) {
-        return { "empty", "Empty", nullptr };
-    }
-    return { view->id, view->title, view->renderer };
-}
-
-ViewDefinition GetDefaultPanelViewForPlugin(const std::string& plugin_id)
-{
-    const auto* plugin = FindPluginById(plugin_id);
-    if (!plugin) {
-        return { "empty", "Empty", nullptr };
-    }
-    const auto* view = FindViewById(plugin->panel_views, plugin->default_panel_id);
     if (!view) {
         return { "empty", "Empty", nullptr };
     }

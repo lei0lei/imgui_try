@@ -10,9 +10,7 @@
 	 void Render(
 		 SDL_Window* window,
 		 float title_h,
-		 bool primary_sidebar_visible,
-		 bool panel_visible,
-		 bool secondary_sidebar_visible
+		 bool primary_sidebar_visible
 	 );
 
 	ITitleBarService& GetService();

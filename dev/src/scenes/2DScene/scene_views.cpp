@@ -1,4 +1,5 @@
 #include "scene_views.h"
+#include "scene_theme.h"
 
 #include "../scene_plugin_registry.h"
 #include "../../workbench/workbench_config.h"
@@ -21,6 +22,16 @@ void DrawEmpty(const char* text)
     ImGui::TextWrapped("%s", text);
 }
 
+bool DrawSceneTabButton(const char* label, bool active, const WorkbenchThemeColors& colors)
+{
+    ImGui::PushStyleColor(ImGuiCol_Button, active ? colors.panel_tab_active : colors.panel_tab_bg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.panel_tab_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.panel_tab_active);
+    const bool pressed = ImGui::Button(label);
+    ImGui::PopStyleColor(3);
+    return pressed;
+}
+
 } // namespace
 
 namespace {
@@ -28,13 +39,6 @@ const bool kRegistered2DRenderer = []() {
     Scenes::ScenePluginRegistry::RegisterRenderer("scene.2d", [](ImVec2 content_min, ImVec2 content_max, EditorTab& tab) {
         Scenes::Scene2DViews::RenderCanvas(content_min, content_max, tab);
     });
-    Scenes::SceneViewContributions views{};
-    views.secondary_views.push_back({ "outline", "Outline", &Scenes::Scene2DViews::RenderOutline });
-    views.secondary_views.push_back({ "properties", "Properties", &Scenes::Scene2DViews::RenderProperties });
-    views.default_secondary_id = "outline";
-    views.panel_views.push_back({ "output", "OUTPUT", &Scenes::Scene2DViews::RenderPanelOutput });
-    views.default_panel_id = "output";
-    Scenes::ScenePluginRegistry::RegisterViews("scene.2d", views);
     return true;
 }();
 }
@@ -42,29 +46,44 @@ const bool kRegistered2DRenderer = []() {
 void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 {
     (void)kRegistered2DRenderer;
-    const WorkbenchTheme& theme = GetWorkbenchTheme();
-    const WorkbenchThemeColors& colors = theme.colors;
-    const WorkbenchThemeSizes& sizes = theme.sizes;
+    const WorkbenchThemeColors& wb_colors = GetWorkbenchTheme().colors;
+    const Scene2DTheme::Theme& scene_theme = Scene2DTheme::Get();
+    const Scene2DTheme::Colors& scene_colors = scene_theme.colors;
+    const Scene2DTheme::Sizes& scene_sizes = scene_theme.sizes;
+
+    const ImVec2 full_max = content_max;
+    bool show_secondary = true;
+    bool show_panel = true;
+    const float secondary_w = 300.0f;
+    const float panel_h = 180.0f;
+    if ((content_max.x - content_min.x) < 640.0f) {
+        show_secondary = false;
+    }
+    if ((content_max.y - content_min.y) < 420.0f) {
+        show_panel = false;
+    }
+    content_max.x -= show_secondary ? secondary_w : 0.0f;
+    content_max.y -= show_panel ? panel_h : 0.0f;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
-    draw_list->AddRectFilled(content_min, content_max, ImGui::GetColorU32(colors.editor_2d_bg));
+    draw_list->AddRectFilled(content_min, content_max, ImGui::GetColorU32(scene_colors.bg));
 
-    float grid_size = sizes.editor_2d_grid_size;
-    ImU32 grid_color = ImGui::GetColorU32(colors.editor_2d_grid);
+    float grid_size = scene_sizes.grid_size;
+    ImU32 grid_color = ImGui::GetColorU32(scene_colors.grid);
 
     for (float x = content_min.x; x < content_max.x; x += grid_size) {
-        draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), grid_color, sizes.editor_2d_grid_line_thickness);
+        draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), grid_color, scene_sizes.grid_line_thickness);
     }
     for (float y = content_min.y; y < content_max.y; y += grid_size) {
-        draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), grid_color, sizes.editor_2d_grid_line_thickness);
+        draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), grid_color, scene_sizes.grid_line_thickness);
     }
 
     ImVec2 center = ImVec2((content_min.x + content_max.x) * 0.5f, (content_min.y + content_max.y) * 0.5f);
     float time = (float)ImGui::GetTime();
 
     float angle = time * 0.5f;
-    float rect_size = sizes.editor_2d_rect_size;
+    float rect_size = scene_sizes.rect_size;
     ImVec2 rect_points[4];
     for (int i = 0; i < 4; i++) {
         float a = angle + i * 3.14159f * 0.5f;
@@ -74,15 +93,15 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         );
     }
     draw_list->AddQuadFilled(rect_points[0], rect_points[1], rect_points[2], rect_points[3],
-        ImGui::GetColorU32(colors.editor_2d_rect_fill));
+        ImGui::GetColorU32(scene_colors.rect_fill));
     draw_list->AddQuad(rect_points[0], rect_points[1], rect_points[2], rect_points[3],
-        ImGui::GetColorU32(colors.editor_2d_rect_border), sizes.editor_2d_rect_outline);
+        ImGui::GetColorU32(scene_colors.rect_border), scene_sizes.rect_outline);
 
     float circle_y = center.y + sinf(time * 2.0f) * 30.0f;
-    draw_list->AddCircleFilled(ImVec2(center.x + 100, circle_y), sizes.editor_2d_circle_radius,
-        ImGui::GetColorU32(colors.editor_2d_circle_fill), 32);
-    draw_list->AddCircle(ImVec2(center.x + 100, circle_y), sizes.editor_2d_circle_radius,
-        ImGui::GetColorU32(colors.editor_2d_circle_border), 32, sizes.editor_2d_circle_outline);
+    draw_list->AddCircleFilled(ImVec2(center.x + 100, circle_y), scene_sizes.circle_radius,
+        ImGui::GetColorU32(scene_colors.circle_fill), 32);
+    draw_list->AddCircle(ImVec2(center.x + 100, circle_y), scene_sizes.circle_radius,
+        ImGui::GetColorU32(scene_colors.circle_border), 32, scene_sizes.circle_outline);
 
     int wave_points = 100;
     for (int i = 0; i < wave_points - 1; i++) {
@@ -96,16 +115,58 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         float y2 = center.y + 150 + sinf(time * 2.0f + t2 * 10.0f) * 30.0f;
 
         draw_list->AddLine(ImVec2(x1, y1), ImVec2(x2, y2),
-            ImGui::GetColorU32(colors.editor_2d_wave), sizes.editor_2d_wave_thickness);
+            ImGui::GetColorU32(scene_colors.wave), scene_sizes.wave_thickness);
     }
 
-    float padding = sizes.editor_content_padding;
+    float padding = scene_sizes.content_padding;
     ImVec2 title_pos = ImVec2(content_min.x + padding, content_min.y + padding);
     std::string title_text = "2D Canvas: " + tab.name;
-    draw_list->AddText(title_pos, ImGui::GetColorU32(colors.editor_2d_title), title_text.c_str());
+    draw_list->AddText(title_pos, ImGui::GetColorU32(scene_colors.title), title_text.c_str());
 
     ImVec2 hint_pos = ImVec2(content_min.x + padding, content_min.y + padding + 25);
-    draw_list->AddText(hint_pos, ImGui::GetColorU32(colors.editor_2d_hint), "2D graphics scene with animations");
+    draw_list->AddText(hint_pos, ImGui::GetColorU32(scene_colors.hint), "2D graphics scene with animations");
+
+    if (show_secondary) {
+        std::string& secondary_view = tab.scene_ui_state["scene2d.secondary.active_view"];
+        if (secondary_view.empty()) {
+            secondary_view = "outline";
+        }
+        ImGui::SetCursorScreenPos(ImVec2(content_max.x, content_min.y));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.secondary_sidebar_bg);
+        ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.secondary_sidebar_border);
+        ImGui::PushStyleColor(ImGuiCol_Text, wb_colors.secondary_sidebar_text);
+        ImGui::BeginChild("scene2d_secondary", ImVec2(full_max.x - content_max.x, full_max.y - content_min.y), true);
+        if (DrawSceneTabButton("Outline", secondary_view == "outline", wb_colors)) {
+            secondary_view = "outline";
+        }
+        ImGui::SameLine();
+        if (DrawSceneTabButton("Properties", secondary_view == "properties", wb_colors)) {
+            secondary_view = "properties";
+        }
+        ImGui::Separator();
+        if (secondary_view == "properties") {
+            RenderProperties(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        } else {
+            RenderOutline(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor(3);
+    }
+
+    if (show_panel) {
+        std::string& panel_view = tab.scene_ui_state["scene2d.panel.active_view"];
+        if (panel_view.empty()) {
+            panel_view = "output";
+        }
+        ImGui::SetCursorScreenPos(ImVec2(content_min.x, content_max.y));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.panel_bg);
+        ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.panel_border);
+        ImGui::PushStyleColor(ImGuiCol_Text, wb_colors.panel_text);
+        ImGui::BeginChild("scene2d_panel", ImVec2(content_max.x - content_min.x, full_max.y - content_max.y), true);
+        RenderPanelOutput(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        ImGui::EndChild();
+        ImGui::PopStyleColor(3);
+    }
 }
 
 void RenderHierarchy(ImVec2, ImVec2, EditorTab* active_tab)

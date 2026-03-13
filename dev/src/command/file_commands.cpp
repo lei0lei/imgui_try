@@ -44,8 +44,6 @@ EditorTab MakeDefaultSceneTab(const IEditorAreaService& editor_area)
 
         tab.name = plugin->name + "-" + std::to_string(same_type_count + 1);
         tab.scene_plugin_id = plugin->id;
-        tab.secondary_active_view_id = UI::GetDefaultSecondaryViewForPlugin(tab.scene_plugin_id).id;
-        tab.panel_active_view_id = UI::GetDefaultPanelViewForPlugin(tab.scene_plugin_id).id;
     } else {
         tab.name = "Untitled-" + std::to_string(editor_area.GetTabs().size() + 1);
     }

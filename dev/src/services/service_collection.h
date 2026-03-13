@@ -3,8 +3,6 @@
 #include <memory>
 #include "activity_bar_service.h"
 #include "primary_sidebar_service.h"
-#include "secondary_sidebar_service.h"
-#include "panel_service.h"
 #include "editor_area_service.h"
 #include "title_bar_service.h"
 #include "notification_service.h"
@@ -14,8 +12,6 @@
 struct ServiceOverrides {
 	IActivityBarService* activity_bar = nullptr;
 	IPrimarySidebarService* primary_sidebar = nullptr;
-	ISecondarySidebarService* secondary_sidebar = nullptr;
-	IPanelService* panel = nullptr;
 	IEditorAreaService* editor_area = nullptr;
 	ITitleBarService* title_bar = nullptr;
 	INotificationService* notification = nullptr;
@@ -29,8 +25,6 @@ public:
 		// Eagerly initialize core services so dependencies are explicit and deterministic.
 		(void)EnsureActivityBar();
 		(void)EnsurePrimarySidebar();
-		(void)EnsureSecondarySidebar();
-		(void)EnsurePanel();
 		(void)EnsureEditorArea();
 		(void)EnsureTitleBar();
 		(void)EnsureNotification();
@@ -43,12 +37,6 @@ public:
 
 	IPrimarySidebarService& GetPrimarySidebarService() { return *EnsurePrimarySidebar(); }
 	const IPrimarySidebarService& GetPrimarySidebarService() const { return *EnsurePrimarySidebar(); }
-
-	ISecondarySidebarService& GetSecondarySidebarService() { return *EnsureSecondarySidebar(); }
-	const ISecondarySidebarService& GetSecondarySidebarService() const { return *EnsureSecondarySidebar(); }
-
-	IPanelService& GetPanelService() { return *EnsurePanel(); }
-	const IPanelService& GetPanelService() const { return *EnsurePanel(); }
 
 	IEditorAreaService& GetEditorAreaService() { return *EnsureEditorArea(); }
 	const IEditorAreaService& GetEditorAreaService() const { return *EnsureEditorArea(); }
@@ -88,30 +76,6 @@ private:
 			}
 		}
 		return primary_sidebar_service_;
-	}
-
-	ISecondarySidebarService* EnsureSecondarySidebar() const {
-		if (!secondary_sidebar_service_) {
-			if (overrides_.secondary_sidebar) {
-				secondary_sidebar_service_ = overrides_.secondary_sidebar;
-			} else {
-				secondary_sidebar_owned_ = std::make_unique<SecondarySidebarService>();
-				secondary_sidebar_service_ = secondary_sidebar_owned_.get();
-			}
-		}
-		return secondary_sidebar_service_;
-	}
-
-	IPanelService* EnsurePanel() const {
-		if (!panel_service_) {
-			if (overrides_.panel) {
-				panel_service_ = overrides_.panel;
-			} else {
-				panel_owned_ = std::make_unique<PanelService>();
-				panel_service_ = panel_owned_.get();
-			}
-		}
-		return panel_service_;
 	}
 
 	IEditorAreaService* EnsureEditorArea() const {
@@ -177,8 +141,6 @@ private:
 	ServiceOverrides overrides_{};
 	mutable std::unique_ptr<ActivityBarService> activity_bar_owned_;
 	mutable std::unique_ptr<PrimarySidebarService> primary_sidebar_owned_;
-	mutable std::unique_ptr<SecondarySidebarService> secondary_sidebar_owned_;
-	mutable std::unique_ptr<PanelService> panel_owned_;
 	mutable std::unique_ptr<EditorAreaService> editor_area_owned_;
 	mutable std::unique_ptr<TitleBarService> title_bar_owned_;
 	mutable std::unique_ptr<NotificationService> notification_owned_;
@@ -187,8 +149,6 @@ private:
 
 	mutable IActivityBarService* activity_bar_service_ = nullptr;
 	mutable IPrimarySidebarService* primary_sidebar_service_ = nullptr;
-	mutable ISecondarySidebarService* secondary_sidebar_service_ = nullptr;
-	mutable IPanelService* panel_service_ = nullptr;
 	mutable IEditorAreaService* editor_area_service_ = nullptr;
 	mutable ITitleBarService* title_bar_service_ = nullptr;
 	mutable INotificationService* notification_service_ = nullptr;

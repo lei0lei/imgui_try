@@ -18,7 +18,5 @@ enum class CommandId {
     WindowMinimize,
     WindowMaximize,
     WindowClose,
-    TogglePrimarySidebar,
-    TogglePanel,
-    ToggleSecondarySidebar
+    TogglePrimarySidebar
 };

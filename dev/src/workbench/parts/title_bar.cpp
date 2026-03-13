@@ -16,9 +16,7 @@ TitleBarPart::TitleBarPart(ITitleBarService& service)
  void TitleBarPart::Render(
 	 SDL_Window* window,
 	 float title_h,
-	 bool primary_sidebar_visible,
-	 bool panel_visible,
-	 bool secondary_sidebar_visible)
+	 bool primary_sidebar_visible)
  {
 	 TitleBarViewModel vm{};
 	 vm.active_menu = service_.GetActiveMenu();
@@ -26,8 +24,6 @@ TitleBarPart::TitleBarPart(ITitleBarService& service)
 	 vm.trigger_command = [this](CommandId cmd) { service_.TriggerCommand(cmd); };
 	 vm.request_block_tab_clicks_once = [this]() { service_.RequestBlockTabClicksOnce(); };
 	 vm.primary_sidebar_visible = primary_sidebar_visible;
-	 vm.panel_visible = panel_visible;
-	 vm.secondary_sidebar_visible = secondary_sidebar_visible;
 	 RenderTitleBarUI(window, vm, title_h);
  }
 

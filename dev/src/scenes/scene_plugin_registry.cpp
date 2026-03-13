@@ -39,12 +39,6 @@ std::unordered_map<std::string, SceneCanvasRenderer>& GlobalRenderers()
     return renderers;
 }
 
-std::unordered_map<std::string, SceneViewContributions>& GlobalViews()
-{
-    static std::unordered_map<std::string, SceneViewContributions> views;
-    return views;
-}
-
 bool LoadPluginFromManifest(const std::filesystem::path& manifest_path, ScenePluginDescriptor& out)
 {
     std::ifstream file(manifest_path);
@@ -115,19 +109,10 @@ void ScenePluginRegistry::RegisterRenderer(const std::string& plugin_id, SceneCa
     GlobalRenderers()[plugin_id] = renderer;
 }
 
-void ScenePluginRegistry::RegisterViews(const std::string& plugin_id, const SceneViewContributions& views)
-{
-    if (plugin_id.empty()) {
-        return;
-    }
-    GlobalViews()[plugin_id] = views;
-}
-
 void ScenePluginRegistry::Load()
 {
     plugins_.clear();
     renderers_.clear();
-    views_.clear();
 
     std::error_code ec;
     const std::filesystem::path root = SceneRootPath();
@@ -148,10 +133,6 @@ void ScenePluginRegistry::Load()
                 if (it != GlobalRenderers().end()) {
                     renderers_[plugin.id] = it->second;
                 }
-                auto vit = GlobalViews().find(plugin.id);
-                if (vit != GlobalViews().end()) {
-                    views_[plugin.id] = vit->second;
-                }
                 plugins_.push_back(std::move(plugin));
             }
         }
@@ -161,10 +142,6 @@ void ScenePluginRegistry::Load()
         auto it = GlobalRenderers().find(plugin.id);
         if (it != GlobalRenderers().end()) {
             renderers_[plugin.id] = it->second;
-        }
-        auto vit = GlobalViews().find(plugin.id);
-        if (vit != GlobalViews().end()) {
-            views_[plugin.id] = vit->second;
         }
     }
 
@@ -190,15 +167,6 @@ SceneCanvasRenderer ScenePluginRegistry::GetRenderer(const std::string& plugin_i
         return nullptr;
     }
     return it->second;
-}
-
-const SceneViewContributions* ScenePluginRegistry::GetViews(const std::string& plugin_id) const
-{
-    auto it = views_.find(plugin_id);
-    if (it == views_.end()) {
-        return nullptr;
-    }
-    return &it->second;
 }
 
 } // namespace Scenes

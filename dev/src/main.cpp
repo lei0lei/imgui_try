@@ -567,9 +567,6 @@ int main(int, char**)
 
         // 渲染Editor area
         workbench.RenderEditorArea(metrics, layout);
-
-        // 渲染Panel 和 Secondary sidebar
-        workbench.RenderPanelAndSecondary(metrics, layout);
         
 
 

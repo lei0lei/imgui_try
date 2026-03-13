@@ -10,7 +10,6 @@ struct NotificationState;
 struct EditorTab;
 struct ViewDefinition;
 enum class ViewContainer;
-enum class PanelTab;
 
 class IActivityBarService {
 public:
@@ -33,36 +32,12 @@ public:
     virtual void SetItems(const std::vector<std::string>& items) = 0;
 };
 
-class ISecondarySidebarService {
-public:
-    virtual ~ISecondarySidebarService() = default;
-    virtual bool IsVisible() const = 0;
-    virtual void SetVisible(bool visible) = 0;
-};
-
-class IPanelService {
-public:
-    virtual ~IPanelService() = default;
-    virtual void Reset() = 0;
-    virtual void SetVisible(bool v) = 0;
-    virtual bool IsVisible() const = 0;
-    virtual void ToggleVisible() = 0;
-    virtual void SetActiveTab(PanelTab tab) = 0;
-    virtual PanelTab GetActiveTab() const = 0;
-};
-
 class ILayoutService {
 public:
     virtual ~ILayoutService() = default;
     virtual bool IsPrimarySidebarVisible() const = 0;
     virtual void SetPrimarySidebarVisible(bool visible) = 0;
     virtual void TogglePrimarySidebar() = 0;
-    virtual bool IsSecondarySidebarVisible() const = 0;
-    virtual void SetSecondarySidebarVisible(bool visible) = 0;
-    virtual void ToggleSecondarySidebar() = 0;
-    virtual bool IsPanelVisible() const = 0;
-    virtual void SetPanelVisible(bool visible) = 0;
-    virtual void TogglePanel() = 0;
     virtual const LayoutState& GetState() const = 0;
 };
 
@@ -101,10 +76,6 @@ public:
     virtual void CloseTab(int index) = 0;
     virtual void ActivateTab(int index) = 0;
     virtual void MoveTab(int from_index, int to_index) = 0;
-    virtual bool GetPanelVisibleForActiveTab(bool fallback) const = 0;
-    virtual bool GetSecondaryVisibleForActiveTab(bool fallback) const = 0;
-    virtual bool SetPanelVisibleForActiveTab(bool visible) = 0;
-    virtual bool SetSecondaryVisibleForActiveTab(bool visible) = 0;
 };
 
 class IViewRegistry {

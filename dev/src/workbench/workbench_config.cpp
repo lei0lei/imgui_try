@@ -85,32 +85,6 @@ WorkbenchTheme MakeDefaultTheme()
     theme.colors.editor_tab_border = ImVec4(0.20f, 0.20f, 0.20f, 1.0f);
     theme.colors.editor_tab_active_indicator = ImVec4(0.0f, 0.48f, 0.80f, 1.0f);
 
-    theme.colors.editor_2d_bg = ImVec4(0.157f, 0.157f, 0.176f, 1.0f);
-    theme.colors.editor_2d_grid = ImVec4(0.235f, 0.235f, 0.255f, 1.0f);
-    theme.colors.editor_2d_rect_fill = ImVec4(0.39f, 0.59f, 1.0f, 0.70f);
-    theme.colors.editor_2d_rect_border = ImVec4(0.59f, 0.78f, 1.0f, 1.0f);
-    theme.colors.editor_2d_circle_fill = ImVec4(1.0f, 0.39f, 0.59f, 0.70f);
-    theme.colors.editor_2d_circle_border = ImVec4(1.0f, 0.59f, 0.78f, 1.0f);
-    theme.colors.editor_2d_wave = ImVec4(0.39f, 1.0f, 0.59f, 1.0f);
-    theme.colors.editor_2d_title = ImVec4(0.86f, 0.86f, 0.90f, 1.0f);
-    theme.colors.editor_2d_hint = ImVec4(0.55f, 0.55f, 0.59f, 0.80f);
-
-    theme.colors.editor_3d_bg_top = ImVec4(0.098f, 0.098f, 0.118f, 1.0f);
-    theme.colors.editor_3d_bg_bottom = ImVec4(0.059f, 0.059f, 0.078f, 1.0f);
-    theme.colors.editor_3d_grid = ImVec4(0.24f, 0.47f, 0.71f, 0.47f);
-    theme.colors.editor_3d_cube = ImVec4(0.31f, 0.63f, 0.86f, 0.78f);
-    theme.colors.editor_3d_title = ImVec4(0.78f, 0.86f, 0.94f, 1.0f);
-    theme.colors.editor_3d_hint = ImVec4(0.47f, 0.55f, 0.63f, 0.80f);
-
-    theme.colors.editor_node_bg = ImVec4(0.118f, 0.118f, 0.129f, 1.0f);
-    theme.colors.editor_node_grid_minor = ImVec4(0.20f, 0.20f, 0.22f, 1.0f);
-    theme.colors.editor_node_grid_major = ImVec4(0.26f, 0.26f, 0.30f, 1.0f);
-    theme.colors.editor_node_axis = ImVec4(0.35f, 0.35f, 0.42f, 1.0f);
-    theme.colors.editor_node_overlay_bg = ImVec4(0.20f, 0.20f, 0.24f, 0.95f);
-    theme.colors.editor_node_overlay_hover = ImVec4(0.30f, 0.30f, 0.36f, 0.98f);
-    theme.colors.editor_node_overlay_active = ImVec4(0.38f, 0.38f, 0.45f, 1.0f);
-    theme.colors.editor_node_overlay_text = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-
     theme.sizes.activity_bar_padding_y = 8.0f;
     theme.sizes.activity_bar_item_spacing = 4.0f;
     theme.sizes.activity_bar_active_indicator_w = 2.0f;
@@ -171,37 +145,6 @@ WorkbenchTheme MakeDefaultTheme()
 
     theme.sizes.editor_welcome_title_offset_y = -30.0f;
     theme.sizes.editor_welcome_hint_offset_y = 10.0f;
-
-    theme.sizes.editor_2d_grid_size = 30.0f;
-    theme.sizes.editor_2d_grid_line_thickness = 1.0f;
-    theme.sizes.editor_2d_rect_size = 80.0f;
-    theme.sizes.editor_2d_rect_outline = 2.5f;
-    theme.sizes.editor_2d_circle_radius = 50.0f;
-    theme.sizes.editor_2d_circle_outline = 2.5f;
-    theme.sizes.editor_2d_wave_thickness = 3.0f;
-    theme.sizes.editor_content_padding = 20.0f;
-
-    theme.sizes.editor_3d_grid_spacing = 40.0f;
-    theme.sizes.editor_3d_grid_line_thickness = 1.5f;
-    theme.sizes.editor_3d_horizontal_line_thickness = 1.5f;
-    theme.sizes.editor_3d_grid_lines = 20.0f;
-    theme.sizes.editor_3d_horizontal_lines = 15.0f;
-    theme.sizes.editor_3d_orbit_radius = 80.0f;
-    theme.sizes.editor_3d_cube_size = 25.0f;
-    theme.sizes.editor_3d_cube_outline = 2.0f;
-
-    theme.sizes.editor_node_grid_size = 64.0f;
-    theme.sizes.editor_node_grid_thickness = 1.0f;
-    theme.sizes.editor_node_grid_major_thickness = 1.5f;
-    theme.sizes.editor_node_axis_thickness = 2.0f;
-    theme.sizes.editor_node_grid_draw_min = 12.0f;
-    theme.sizes.editor_node_grid_draw_max = 72.0f;
-    theme.sizes.editor_node_grid_minor_threshold = 1.25f;
-    theme.sizes.editor_node_zoom_min = 0.3f;
-    theme.sizes.editor_node_zoom_max = 1.5f;
-    theme.sizes.editor_node_zoom_step = 0.1f;
-    theme.sizes.editor_node_overlay_padding = 6.0f;
-    theme.sizes.editor_node_overlay_rounding = 4.0f;
 
     return theme;
 }
@@ -376,32 +319,6 @@ bool WorkbenchConfig::LoadFromFile(const char* path)
         {"editor_tab_close_icon", &theme.colors.editor_tab_close_icon},
         {"editor_tab_border", &theme.colors.editor_tab_border},
         {"editor_tab_active_indicator", &theme.colors.editor_tab_active_indicator},
-
-        {"editor_2d_bg", &theme.colors.editor_2d_bg},
-        {"editor_2d_grid", &theme.colors.editor_2d_grid},
-        {"editor_2d_rect_fill", &theme.colors.editor_2d_rect_fill},
-        {"editor_2d_rect_border", &theme.colors.editor_2d_rect_border},
-        {"editor_2d_circle_fill", &theme.colors.editor_2d_circle_fill},
-        {"editor_2d_circle_border", &theme.colors.editor_2d_circle_border},
-        {"editor_2d_wave", &theme.colors.editor_2d_wave},
-        {"editor_2d_title", &theme.colors.editor_2d_title},
-        {"editor_2d_hint", &theme.colors.editor_2d_hint},
-
-        {"editor_3d_bg_top", &theme.colors.editor_3d_bg_top},
-        {"editor_3d_bg_bottom", &theme.colors.editor_3d_bg_bottom},
-        {"editor_3d_grid", &theme.colors.editor_3d_grid},
-        {"editor_3d_cube", &theme.colors.editor_3d_cube},
-        {"editor_3d_title", &theme.colors.editor_3d_title},
-        {"editor_3d_hint", &theme.colors.editor_3d_hint},
-
-        {"editor_node_bg", &theme.colors.editor_node_bg},
-        {"editor_node_grid_minor", &theme.colors.editor_node_grid_minor},
-        {"editor_node_grid_major", &theme.colors.editor_node_grid_major},
-        {"editor_node_axis", &theme.colors.editor_node_axis},
-        {"editor_node_overlay_bg", &theme.colors.editor_node_overlay_bg},
-        {"editor_node_overlay_hover", &theme.colors.editor_node_overlay_hover},
-        {"editor_node_overlay_active", &theme.colors.editor_node_overlay_active},
-        {"editor_node_overlay_text", &theme.colors.editor_node_overlay_text},
     };
 
     std::unordered_map<std::string, float*> size_map = {
@@ -472,37 +389,6 @@ bool WorkbenchConfig::LoadFromFile(const char* path)
 
         {"editor_welcome_title_offset_y", &theme.sizes.editor_welcome_title_offset_y},
         {"editor_welcome_hint_offset_y", &theme.sizes.editor_welcome_hint_offset_y},
-
-        {"editor_2d_grid_size", &theme.sizes.editor_2d_grid_size},
-        {"editor_2d_grid_line_thickness", &theme.sizes.editor_2d_grid_line_thickness},
-        {"editor_2d_rect_size", &theme.sizes.editor_2d_rect_size},
-        {"editor_2d_rect_outline", &theme.sizes.editor_2d_rect_outline},
-        {"editor_2d_circle_radius", &theme.sizes.editor_2d_circle_radius},
-        {"editor_2d_circle_outline", &theme.sizes.editor_2d_circle_outline},
-        {"editor_2d_wave_thickness", &theme.sizes.editor_2d_wave_thickness},
-        {"editor_content_padding", &theme.sizes.editor_content_padding},
-
-        {"editor_3d_grid_spacing", &theme.sizes.editor_3d_grid_spacing},
-        {"editor_3d_grid_line_thickness", &theme.sizes.editor_3d_grid_line_thickness},
-        {"editor_3d_horizontal_line_thickness", &theme.sizes.editor_3d_horizontal_line_thickness},
-        {"editor_3d_grid_lines", &theme.sizes.editor_3d_grid_lines},
-        {"editor_3d_horizontal_lines", &theme.sizes.editor_3d_horizontal_lines},
-        {"editor_3d_orbit_radius", &theme.sizes.editor_3d_orbit_radius},
-        {"editor_3d_cube_size", &theme.sizes.editor_3d_cube_size},
-        {"editor_3d_cube_outline", &theme.sizes.editor_3d_cube_outline},
-
-        {"editor_node_grid_size", &theme.sizes.editor_node_grid_size},
-        {"editor_node_grid_thickness", &theme.sizes.editor_node_grid_thickness},
-        {"editor_node_grid_major_thickness", &theme.sizes.editor_node_grid_major_thickness},
-        {"editor_node_axis_thickness", &theme.sizes.editor_node_axis_thickness},
-        {"editor_node_grid_draw_min", &theme.sizes.editor_node_grid_draw_min},
-        {"editor_node_grid_draw_max", &theme.sizes.editor_node_grid_draw_max},
-        {"editor_node_grid_minor_threshold", &theme.sizes.editor_node_grid_minor_threshold},
-        {"editor_node_zoom_min", &theme.sizes.editor_node_zoom_min},
-        {"editor_node_zoom_max", &theme.sizes.editor_node_zoom_max},
-        {"editor_node_zoom_step", &theme.sizes.editor_node_zoom_step},
-        {"editor_node_overlay_padding", &theme.sizes.editor_node_overlay_padding},
-        {"editor_node_overlay_rounding", &theme.sizes.editor_node_overlay_rounding},
     };
 
     std::string section;

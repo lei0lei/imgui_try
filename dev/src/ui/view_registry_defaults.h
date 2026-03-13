@@ -10,7 +10,5 @@ std::string GetDefaultScenePluginId();
 const std::string& GetPrimarySidebarGlobalPluginId();
 
 ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item);
-ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id);
-ViewDefinition GetDefaultPanelViewForPlugin(const std::string& plugin_id);
 
 } // namespace UI

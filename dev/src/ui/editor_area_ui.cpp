@@ -261,15 +261,13 @@ void EditorArea::Draw(
     float right_offset,
     float title_h,
     float status_bar_h,
-    float panel_h,
-    bool panel_visible,
     bool block_tab_clicks,
     const ViewModel& view_model)
 {
     ImGuiIO& io = ImGui::GetIO();
     
     // 计算编辑器区域
-    float bottom_offset = status_bar_h + (panel_visible ? panel_h : 0.0f);
+    float bottom_offset = status_bar_h;
     
     ImVec2 area_min = ImVec2(left_offset, title_h);
     ImVec2 area_max = ImVec2(io.DisplaySize.x - right_offset, io.DisplaySize.y - bottom_offset);

@@ -18,8 +18,6 @@ EditorAreaPart::EditorAreaPart(IEditorAreaService& service)
 	 float right_offset,
 	 float title_h,
 	 float status_bar_h,
-	 float panel_h,
-	 bool panel_visible,
 	 bool block_tab_clicks)
  {
 	 UI::EditorArea::ViewModel vm{};
@@ -28,7 +26,7 @@ EditorAreaPart::EditorAreaPart(IEditorAreaService& service)
 	 vm.close_tab = [this](int index) { service_.CloseTab(index); };
 	 vm.activate_tab = [this](int index) { service_.ActivateTab(index); };
 	 vm.move_tab = [this](int from_index, int to_index) { service_.MoveTab(from_index, to_index); };
-	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, panel_h, panel_visible, block_tab_clicks, vm);
+	 ui_->Draw(left_offset, right_offset, title_h, status_bar_h, block_tab_clicks, vm);
  }
 
  IEditorAreaService& EditorAreaPart::GetService()

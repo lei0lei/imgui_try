@@ -73,36 +73,6 @@ void Workbench::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutIn
 }
 
 /**
- * @brief 渲染面板
- * @param metrics 工作台度量信息
- * @param layout 布局信息
- */
-void Workbench::RenderPanel(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
-{
-    renderer_.RenderPanel(metrics, layout);
-}
-
-/**
- * @brief 渲染辅助侧边栏
- * @param metrics 工作台度量信息
- * @param layout 布局信息
- */
-void Workbench::RenderSecondarySidebar(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
-{
-    renderer_.RenderSecondarySidebar(metrics, layout);
-}
-
-/**
- * @brief 渲染面板和辅助侧边栏
- * @param metrics 工作台度量信息
- * @param layout_before 之前的布局信息
- */
-void Workbench::RenderPanelAndSecondary(const WorkbenchMetrics& metrics, const LayoutInfo& layout_before)
-{
-    renderer_.RenderPanelAndSecondary(metrics, layout_before);
-}
-
-/**
  * @brief 计算布局信息
  * @param metrics 工作台度量信息
  * @return LayoutInfo 计算得到的布局信息
@@ -143,35 +113,26 @@ Workbench::Workbench(SDL_Window* window)
           services_(),
           title_bar_part_(services_.GetTitleBarService()),
           status_bar_part_(services_.GetNotificationService()),
-          panel_part_(services_.GetPanelService()),
           activity_bar_part_(services_.GetActivityBarService()),
           primary_sidebar_part_(services_.GetPrimarySidebarService()),
-          secondary_sidebar_part_(services_.GetSecondarySidebarService()),
           editor_area_part_(services_.GetEditorAreaService()),
           command_controller_(
                 command_service_,
                 services_.GetTitleBarService(),
                 services_.GetNotificationService(),
-                services_.GetPanelService(),
                 services_.GetActivityBarService(),
-                services_.GetEditorAreaService(),
-                services_.GetLayoutService(),
-                services_.GetSecondarySidebarService()),
+                services_.GetEditorAreaService()),
           renderer_(
                 services_,
                 title_bar_part_,
                 status_bar_part_,
-                panel_part_,
                 activity_bar_part_,
                 primary_sidebar_part_,
-                secondary_sidebar_part_,
                 editor_area_part_,
                 config_,
-                layout_manager_,
-                command_controller_)
+                layout_manager_)
 {
     // 可初始化其它状态
-    services_.GetPanelService().Reset();
     services_.GetLayoutService().SetPrimarySidebarVisible(true);
     UI::RegisterDefaultViews(services_.GetViewRegistry());
     command_controller_.RegisterCommands(
@@ -184,9 +145,7 @@ Workbench::Workbench(SDL_Window* window)
             is_max = !is_max;
         },
         [this]() {},
-        [this]() { services_.GetLayoutService().TogglePrimarySidebar(); },
-        []() {},
-        []() {}
+        [this]() { services_.GetLayoutService().TogglePrimarySidebar(); }
     );
 }
 
@@ -205,15 +164,6 @@ void Workbench::SetPrimarySidebarVisible(bool visible)
 void Workbench::TogglePrimarySidebar()
 {
     SetPrimarySidebarVisible(!services_.GetLayoutService().IsPrimarySidebarVisible());
-}
-
-/**
- * @brief 关闭辅助侧边栏
- */
-void Workbench::CloseSecondarySidebar()
-{
-    services_.GetLayoutService().SetSecondarySidebarVisible(false);
-    secondary_sidebar_part_.GetService().SetVisible(false);
 }
 
 /**

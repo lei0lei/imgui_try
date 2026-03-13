@@ -1,4 +1,5 @@
 #include "scene_views.h"
+#include "scene_theme.h"
 
 #include "node_graph_executor.h"
 #include "../scene_plugin_registry.h"
@@ -55,6 +56,16 @@ bool InputTextMultilineStdString(const char* label, std::string* str, const ImVe
     return ImGui::InputTextMultiline(label, str->data(), str->capacity() + 1, size, flags, callback, str);
 }
 
+bool DrawSceneTabButton(const char* label, bool active, const WorkbenchThemeColors& colors)
+{
+    ImGui::PushStyleColor(ImGuiCol_Button, active ? colors.panel_tab_active : colors.panel_tab_bg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.panel_tab_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.panel_tab_active);
+    const bool pressed = ImGui::Button(label);
+    ImGui::PopStyleColor(3);
+    return pressed;
+}
+
 } // namespace
 
 namespace {
@@ -62,13 +73,6 @@ const bool kRegisteredNodeRenderer = []() {
     Scenes::ScenePluginRegistry::RegisterRenderer("scene.node", [](ImVec2 content_min, ImVec2 content_max, EditorTab& tab) {
         Scenes::NodeEditorViews::RenderCanvas(content_min, content_max, tab);
     });
-    Scenes::SceneViewContributions views{};
-    views.secondary_views.push_back({ "outline", "Outline", &Scenes::NodeEditorViews::RenderOutline });
-    views.secondary_views.push_back({ "properties", "Properties", &Scenes::NodeEditorViews::RenderProperties });
-    views.default_secondary_id = "outline";
-    views.panel_views.push_back({ "output", "OUTPUT", &Scenes::NodeEditorViews::RenderPanelOutput });
-    views.default_panel_id = "output";
-    Scenes::ScenePluginRegistry::RegisterViews("scene.node", views);
     return true;
 }();
 }
@@ -76,13 +80,27 @@ const bool kRegisteredNodeRenderer = []() {
 void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 {
     (void)kRegisteredNodeRenderer;
-    const WorkbenchTheme& theme = GetWorkbenchTheme();
-    const WorkbenchThemeColors& colors = theme.colors;
-    const WorkbenchThemeSizes& sizes = theme.sizes;
+    const WorkbenchThemeColors& wb_colors = GetWorkbenchTheme().colors;
+    const NodeEditorTheme::Theme& scene_theme = NodeEditorTheme::Get();
+    const NodeEditorTheme::Colors& scene_colors = scene_theme.colors;
+    const NodeEditorTheme::Sizes& scene_sizes = scene_theme.sizes;
+    const ImVec2 full_max = content_max;
+    bool show_secondary = true;
+    bool show_panel = true;
+    const float secondary_w = 320.0f;
+    const float panel_h = 190.0f;
+    if ((content_max.x - content_min.x) < 700.0f) {
+        show_secondary = false;
+    }
+    if ((content_max.y - content_min.y) < 460.0f) {
+        show_panel = false;
+    }
+    content_max.x -= show_secondary ? secondary_w : 0.0f;
+    content_max.y -= show_panel ? panel_h : 0.0f;
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
     ImVec2 canvas_size = ImVec2(content_max.x - content_min.x, content_max.y - content_min.y);
-    draw_list->AddRectFilled(content_min, content_max, ImGui::GetColorU32(colors.editor_node_bg));
+    draw_list->AddRectFilled(content_min, content_max, ImGui::GetColorU32(scene_colors.bg));
 
     ImGui::SetCursorScreenPos(content_min);
     ImGui::SetNextItemAllowOverlap();
@@ -95,7 +113,7 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
                       mouse_pos.y >= content_min.y && mouse_pos.y <= content_max.y);
     bool canvas_hovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
 
-    const float overlay_padding = sizes.editor_node_overlay_padding;
+    const float overlay_padding = scene_sizes.overlay_padding;
     const ImVec2 button_size = ImVec2(34.0f, 30.0f);
     const float spacing = 8.0f;
     ImVec2 percent_size = ImGui::CalcTextSize("100");
@@ -113,7 +131,7 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 
     auto apply_zoom = [&](float zoom_scale, ImVec2 pivot) {
         float old_zoom = tab.node_canvas_zoom;
-        float new_zoom = std::clamp(old_zoom * zoom_scale, sizes.editor_node_zoom_min, sizes.editor_node_zoom_max);
+        float new_zoom = std::clamp(old_zoom * zoom_scale, scene_sizes.zoom_min, scene_sizes.zoom_max);
         if (new_zoom == old_zoom) {
             return;
         }
@@ -134,7 +152,7 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 
     if (allow_input && io.MouseWheel != 0.0f) {
         float wheel = std::clamp(io.MouseWheel, -3.0f, 3.0f);
-        apply_zoom(1.0f + wheel * sizes.editor_node_zoom_step, io.MousePos);
+        apply_zoom(1.0f + wheel * scene_sizes.zoom_step, io.MousePos);
     }
 
     auto screen_to_canvas = [&](ImVec2 screen_pos) {
@@ -470,17 +488,17 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 
     ImVec2 grid_pan = ImVec2(tab.node_canvas_pan.x * tab.node_canvas_zoom,
                              tab.node_canvas_pan.y * tab.node_canvas_zoom);
-    const float pan_wrap = sizes.editor_node_grid_size * 1024.0f;
+    const float pan_wrap = scene_sizes.grid_size * 1024.0f;
     if (pan_wrap > 0.0f) {
         grid_pan.x = std::fmod(grid_pan.x, pan_wrap);
         grid_pan.y = std::fmod(grid_pan.y, pan_wrap);
     }
 
     draw_list->PushClipRect(content_min, content_max, true);
-    const float base_grid = sizes.editor_node_grid_size;
+    const float base_grid = scene_sizes.grid_size;
     const float grid_size = base_grid * tab.node_canvas_zoom;
-    const float grid_draw_min = sizes.editor_node_grid_draw_min;
-    const float grid_draw_max = sizes.editor_node_grid_draw_max;
+    const float grid_draw_min = scene_sizes.grid_draw_min;
+    const float grid_draw_max = scene_sizes.grid_draw_max;
     float draw_grid_size = std::clamp(grid_size, grid_draw_min, grid_draw_max);
     if (draw_grid_size <= 0.0f) {
         draw_grid_size = 1.0f;
@@ -496,29 +514,29 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         return min_pos + offset;
     };
 
-    ImU32 minor_col = ImGui::GetColorU32(colors.editor_node_grid_minor);
-    ImU32 major_col = ImGui::GetColorU32(colors.editor_node_grid_major);
+    ImU32 minor_col = ImGui::GetColorU32(scene_colors.grid_minor);
+    ImU32 major_col = ImGui::GetColorU32(scene_colors.grid_major);
 
-    bool draw_minor = draw_grid_size >= (grid_draw_min * sizes.editor_node_grid_minor_threshold);
+    bool draw_minor = draw_grid_size >= (grid_draw_min * scene_sizes.grid_minor_threshold);
     if (draw_minor) {
         float start_x = grid_start(content_min.x, grid_pan.x, draw_grid_size);
         for (float x = start_x; x <= content_max.x; x += draw_grid_size) {
-            draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), minor_col, sizes.editor_node_grid_thickness);
+            draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), minor_col, scene_sizes.grid_thickness);
         }
         float start_y = grid_start(content_min.y, grid_pan.y, draw_grid_size);
         for (float y = start_y; y <= content_max.y; y += draw_grid_size) {
-            draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), minor_col, sizes.editor_node_grid_thickness);
+            draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), minor_col, scene_sizes.grid_thickness);
         }
     }
 
     {
         float start_x = grid_start(content_min.x, grid_pan.x, draw_major_grid_size);
         for (float x = start_x; x <= content_max.x; x += draw_major_grid_size) {
-            draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), major_col, sizes.editor_node_grid_major_thickness);
+            draw_list->AddLine(ImVec2(x, content_min.y), ImVec2(x, content_max.y), major_col, scene_sizes.grid_major_thickness);
         }
         float start_y = grid_start(content_min.y, grid_pan.y, draw_major_grid_size);
         for (float y = start_y; y <= content_max.y; y += draw_major_grid_size) {
-            draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), major_col, sizes.editor_node_grid_major_thickness);
+            draw_list->AddLine(ImVec2(content_min.x, y), ImVec2(content_max.x, y), major_col, scene_sizes.grid_major_thickness);
         }
     }
 
@@ -634,33 +652,33 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
     ImGui::SetWindowFontScale(1.0f);
 
     draw_list->PopClipRect();
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, sizes.editor_node_overlay_rounding);
-    ImGui::PushStyleColor(ImGuiCol_Button, colors.editor_node_overlay_bg);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors.editor_node_overlay_hover);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors.editor_node_overlay_active);
-    ImGui::PushStyleColor(ImGuiCol_Text, colors.editor_node_overlay_text);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, scene_sizes.overlay_rounding);
+    ImGui::PushStyleColor(ImGuiCol_Button, scene_colors.overlay_bg);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, scene_colors.overlay_hover);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, scene_colors.overlay_active);
+    ImGui::PushStyleColor(ImGuiCol_Text, scene_colors.overlay_text);
 
     ImDrawList* overlay_draw = ImGui::GetWindowDrawList();
-    ImVec4 overlay_bg = colors.editor_node_overlay_bg;
+    ImVec4 overlay_bg = scene_colors.overlay_bg;
     overlay_bg.w = std::min(1.0f, overlay_bg.w + 0.1f);
 
     auto draw_icon_plus = [&](ImVec2 p0, ImVec2 p1) {
         ImVec2 c = ImVec2((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
         float r = (p1.x - p0.x) * 0.25f;
-        ImU32 col = ImGui::GetColorU32(colors.editor_node_overlay_text);
+        ImU32 col = ImGui::GetColorU32(scene_colors.overlay_text);
         overlay_draw->AddLine(ImVec2(c.x - r, c.y), ImVec2(c.x + r, c.y), col, 2.0f);
         overlay_draw->AddLine(ImVec2(c.x, c.y - r), ImVec2(c.x, c.y + r), col, 2.0f);
     };
     auto draw_icon_minus = [&](ImVec2 p0, ImVec2 p1) {
         ImVec2 c = ImVec2((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
         float r = (p1.x - p0.x) * 0.25f;
-        ImU32 col = ImGui::GetColorU32(colors.editor_node_overlay_text);
+        ImU32 col = ImGui::GetColorU32(scene_colors.overlay_text);
         overlay_draw->AddLine(ImVec2(c.x - r, c.y), ImVec2(c.x + r, c.y), col, 2.0f);
     };
     auto draw_icon_reset = [&](ImVec2 p0, ImVec2 p1) {
         ImVec2 c = ImVec2((p0.x + p1.x) * 0.5f, (p0.y + p1.y) * 0.5f);
         float r = (p1.x - p0.x) * 0.25f;
-        ImU32 col = ImGui::GetColorU32(colors.editor_node_overlay_text);
+        ImU32 col = ImGui::GetColorU32(scene_colors.overlay_text);
         overlay_draw->AddCircle(ImVec2(c.x, c.y), r, col, 24, 2.0f);
         overlay_draw->AddLine(ImVec2(c.x, c.y - r * 0.9f), ImVec2(c.x + r * 0.6f, c.y - r * 0.6f), col, 2.0f);
     };
@@ -670,9 +688,9 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         bool pressed = ImGui::Button(id, button_size);
         ImVec2 p0 = ImGui::GetItemRectMin();
         ImVec2 p1 = ImGui::GetItemRectMax();
-        ImU32 bg_col = ImGui::GetColorU32(ImGui::IsItemActive() ? colors.editor_node_overlay_active
-            : (ImGui::IsItemHovered() ? colors.editor_node_overlay_hover : overlay_bg));
-        overlay_draw->AddRectFilled(p0, p1, bg_col, sizes.editor_node_overlay_rounding);
+        ImU32 bg_col = ImGui::GetColorU32(ImGui::IsItemActive() ? scene_colors.overlay_active
+            : (ImGui::IsItemHovered() ? scene_colors.overlay_hover : overlay_bg));
+        overlay_draw->AddRectFilled(p0, p1, bg_col, scene_sizes.overlay_rounding);
         draw_icon(p0, p1);
         return pressed;
     };
@@ -681,11 +699,11 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
 
     ImVec2 button_pos = ImVec2(stack_pos.x + overlay_padding, stack_pos.y + overlay_padding);
     if (icon_button("##zoom_in", button_pos, draw_icon_plus)) {
-        apply_zoom(1.0f + sizes.editor_node_zoom_step, zoom_pivot);
+        apply_zoom(1.0f + scene_sizes.zoom_step, zoom_pivot);
     }
     button_pos.y += button_size.y + spacing;
     if (icon_button("##zoom_out", button_pos, draw_icon_minus)) {
-        apply_zoom(1.0f - sizes.editor_node_zoom_step, zoom_pivot);
+        apply_zoom(1.0f - scene_sizes.zoom_step, zoom_pivot);
     }
     button_pos.y += button_size.y + spacing;
     if (icon_button("##zoom_reset", button_pos, draw_icon_reset)) {
@@ -695,7 +713,7 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
     button_pos.y += button_size.y + spacing;
     ImVec2 percent_pos = ImVec2(button_pos.x, button_pos.y);
     ImVec2 percent_max = ImVec2(button_pos.x + button_size.x, button_pos.y + button_size.y);
-    overlay_draw->AddRectFilled(percent_pos, percent_max, ImGui::GetColorU32(overlay_bg), sizes.editor_node_overlay_rounding);
+    overlay_draw->AddRectFilled(percent_pos, percent_max, ImGui::GetColorU32(overlay_bg), scene_sizes.overlay_rounding);
     const float zoom_percent = tab.node_canvas_zoom * 100.0f;
     std::string percent_text = std::to_string((int)zoom_percent);
     ImVec2 percent_text_size = ImGui::CalcTextSize(percent_text.c_str());
@@ -703,10 +721,52 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         percent_pos.x + (button_size.x - percent_text_size.x) * 0.5f,
         percent_pos.y + (button_size.y - percent_text_size.y) * 0.5f
     );
-    overlay_draw->AddText(percent_text_pos, ImGui::GetColorU32(colors.editor_node_overlay_text), percent_text.c_str());
+    overlay_draw->AddText(percent_text_pos, ImGui::GetColorU32(scene_colors.overlay_text), percent_text.c_str());
 
     ImGui::PopStyleColor(4);
     ImGui::PopStyleVar();
+
+    if (show_secondary) {
+        std::string& secondary_view = tab.scene_ui_state["scene_node.secondary.active_view"];
+        if (secondary_view.empty()) {
+            secondary_view = "outline";
+        }
+        ImGui::SetCursorScreenPos(ImVec2(content_max.x, content_min.y));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.secondary_sidebar_bg);
+        ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.secondary_sidebar_border);
+        ImGui::PushStyleColor(ImGuiCol_Text, wb_colors.secondary_sidebar_text);
+        ImGui::BeginChild("scene_node_secondary", ImVec2(full_max.x - content_max.x, full_max.y - content_min.y), true);
+        if (DrawSceneTabButton("Outline", secondary_view == "outline", wb_colors)) {
+            secondary_view = "outline";
+        }
+        ImGui::SameLine();
+        if (DrawSceneTabButton("Properties", secondary_view == "properties", wb_colors)) {
+            secondary_view = "properties";
+        }
+        ImGui::Separator();
+        if (secondary_view == "properties") {
+            RenderProperties(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        } else {
+            RenderOutline(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor(3);
+    }
+
+    if (show_panel) {
+        std::string& panel_view = tab.scene_ui_state["scene_node.panel.active_view"];
+        if (panel_view.empty()) {
+            panel_view = "output";
+        }
+        ImGui::SetCursorScreenPos(ImVec2(content_min.x, content_max.y));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.panel_bg);
+        ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.panel_border);
+        ImGui::PushStyleColor(ImGuiCol_Text, wb_colors.panel_text);
+        ImGui::BeginChild("scene_node_panel", ImVec2(content_max.x - content_min.x, full_max.y - content_max.y), true);
+        RenderPanelOutput(ImVec2(0, 0), ImVec2(0, 0), &tab);
+        ImGui::EndChild();
+        ImGui::PopStyleColor(3);
+    }
 }
 
 void RenderLibrary(ImVec2, ImVec2, EditorTab* active_tab)

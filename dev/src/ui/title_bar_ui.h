@@ -10,8 +10,6 @@ struct TitleBarViewModel {
     std::function<void(CommandId)> trigger_command;
     std::function<void()> request_block_tab_clicks_once;
     bool primary_sidebar_visible = true;
-    bool panel_visible = true;
-    bool secondary_sidebar_visible = true;
 };
 
 // 只负责渲染和交互收集，不直接依赖 service

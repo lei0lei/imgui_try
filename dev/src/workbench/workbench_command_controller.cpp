@@ -13,19 +13,13 @@
 WorkbenchCommandController::WorkbenchCommandController(CommandService& command_service,
                                                        ITitleBarService& title_bar,
                                                        INotificationService& notification,
-                                                       IPanelService& panel,
                                                        IActivityBarService& activity_bar,
-                                                       IEditorAreaService& editor_area,
-                                                       ILayoutService& layout,
-                                                       ISecondarySidebarService& secondary_sidebar)
+                                     IEditorAreaService& editor_area)
     : command_service_(command_service),
       title_bar_service_(title_bar),
       notification_(notification),
-      panel_(panel),
       activity_bar_(activity_bar),
-      editor_area_(editor_area),
-      layout_(layout),
-      secondary_sidebar_(secondary_sidebar)
+    editor_area_(editor_area)
 {
 }
 
@@ -34,16 +28,12 @@ void WorkbenchCommandController::RegisterCommands(std::function<void(bool)> set_
                                                   std::function<void()> window_minimize,
                                                   std::function<void()> window_maximize,
                                                   std::function<void()> window_close,
-                                                  std::function<void()> toggle_primary_sidebar,
-                                                  std::function<void()> toggle_panel,
-                                                  std::function<void()> toggle_secondary_sidebar)
+                                                  std::function<void()> toggle_primary_sidebar)
 {
     CommandHandlersContext ctx{
         notification_,
-        panel_,
         activity_bar_,
         editor_area_,
-        layout_,
         std::move(set_primary_sidebar_visible),
         [this, request_exit]() {
             pending_exit_ = true;
@@ -57,36 +47,7 @@ void WorkbenchCommandController::RegisterCommands(std::function<void(bool)> set_
             if (window_close)
                 window_close();
         },
-        std::move(toggle_primary_sidebar),
-        [this, toggle_panel]() {
-            const bool current = editor_area_.GetPanelVisibleForActiveTab(layout_.IsPanelVisible());
-            const bool next = !current;
-            if (editor_area_.SetPanelVisibleForActiveTab(next)) {
-                layout_.SetPanelVisible(next);
-                SetAllowWithoutEditor(LayoutRegion::Panel, false);
-            } else {
-                bool will_show = !layout_.IsPanelVisible();
-                layout_.TogglePanel();
-                SetAllowWithoutEditor(LayoutRegion::Panel, will_show);
-            }
-            if (toggle_panel)
-                toggle_panel();
-        },
-        [this, toggle_secondary_sidebar]() {
-            const bool current = editor_area_.GetSecondaryVisibleForActiveTab(layout_.IsSecondarySidebarVisible());
-            const bool next = !current;
-            if (editor_area_.SetSecondaryVisibleForActiveTab(next)) {
-                layout_.SetSecondarySidebarVisible(next);
-                SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, false);
-            } else {
-                bool will_show = !layout_.IsSecondarySidebarVisible();
-                layout_.ToggleSecondarySidebar();
-                SetAllowWithoutEditor(LayoutRegion::SecondarySidebar, will_show);
-            }
-            secondary_sidebar_.SetVisible(layout_.IsSecondarySidebarVisible());
-            if (toggle_secondary_sidebar)
-                toggle_secondary_sidebar();
-        }
+        std::move(toggle_primary_sidebar)
     };
 
     RegisterWorkbenchCommands(command_service_, ctx);
@@ -104,16 +65,3 @@ void WorkbenchCommandController::HandleWindowAndMenuActions(bool& done)
         command_service_.Execute(cmd);
 }
 
-void WorkbenchCommandController::SetAllowWithoutEditor(LayoutRegion region, bool value)
-{
-    if (region == LayoutRegion::Panel) {
-        allow_panel_without_editor_ = value;
-        return;
-    }
-    allow_secondary_without_editor_ = value;
-}
-
-bool WorkbenchCommandController::AllowWithoutEditor(LayoutRegion region) const
-{
-    return (region == LayoutRegion::Panel) ? allow_panel_without_editor_ : allow_secondary_without_editor_;
-}
