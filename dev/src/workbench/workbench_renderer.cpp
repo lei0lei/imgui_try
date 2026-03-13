@@ -251,11 +251,10 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
 {
     ActivityBarResult result = activity_bar_part_.Render(title_h, status_bar_h, activity_bar_w);
     if (result.item_clicked) {
-        EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-        const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
-        const ViewDefinition def = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, result.selected_item);
+        const std::string& primary_plugin_id = UI::GetPrimarySidebarGlobalPluginId();
+        const ViewDefinition def = UI::GetDefaultPrimaryViewForPlugin(primary_plugin_id, result.selected_item);
         if (def.renderer) {
-            services_.GetViewRegistry().SetActiveViewById(scene_plugin_id, ViewContainer::PrimarySidebar, def.id);
+            services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, ViewContainer::PrimarySidebar, def.id);
         }
         if (services_.GetLayoutService().IsPrimarySidebarVisible() && result.selected_item == last_activity_item_) {
             services_.GetLayoutService().SetPrimarySidebarVisible(false);
@@ -271,20 +270,20 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
 void WorkbenchRenderer::RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w)
 {
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
-    const std::string scene_plugin_id = ResolveScenePluginId(active_tab);
+    const std::string& primary_plugin_id = UI::GetPrimarySidebarGlobalPluginId();
     ActivityBarItem active_item = (ActivityBarItem)activity_bar_part_.GetService().GetSelectedItem();
     const bool selection_changed = !has_primary_view_selection_
         || last_primary_view_item_ != active_item
-        || last_primary_view_plugin_id_ != scene_plugin_id;
+        || last_primary_view_plugin_id_ != primary_plugin_id;
     if (selection_changed) {
         if (const char* view_id = PrimarySidebarViewIdForItem(active_item)) {
-            services_.GetViewRegistry().SetActiveViewById(scene_plugin_id, ViewContainer::PrimarySidebar, view_id);
+            services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, ViewContainer::PrimarySidebar, view_id);
         }
         last_primary_view_item_ = active_item;
-        last_primary_view_plugin_id_ = scene_plugin_id;
+        last_primary_view_plugin_id_ = primary_plugin_id;
         has_primary_view_selection_ = true;
     }
-    primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), scene_plugin_id, active_tab, active_item);
+    primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), primary_plugin_id, active_tab, active_item);
 }
 
 void WorkbenchRenderer::RenderSecondarySidebar(float title_h, float status_bar_h, float panel_h, float secondary_sidebar_w)

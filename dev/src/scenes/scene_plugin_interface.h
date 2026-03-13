@@ -17,10 +17,6 @@ struct SceneContributedView {
 };
 
 struct SceneViewContributions {
-    std::string primary_view_id;
-    std::string primary_view_title;
-    SceneViewRenderer primary_view_renderer = nullptr;
-
     std::vector<SceneContributedView> secondary_views;
     std::string default_secondary_id;
 

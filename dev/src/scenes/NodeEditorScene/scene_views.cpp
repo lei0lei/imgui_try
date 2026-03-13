@@ -63,9 +63,6 @@ const bool kRegisteredNodeRenderer = []() {
         Scenes::NodeEditorViews::RenderCanvas(content_min, content_max, tab);
     });
     Scenes::SceneViewContributions views{};
-    views.primary_view_id = "node";
-    views.primary_view_title = "Node";
-    views.primary_view_renderer = &Scenes::NodeEditorViews::RenderLibrary;
     views.secondary_views.push_back({ "outline", "Outline", &Scenes::NodeEditorViews::RenderOutline });
     views.secondary_views.push_back({ "properties", "Properties", &Scenes::NodeEditorViews::RenderProperties });
     views.default_secondary_id = "outline";

@@ -18,6 +18,7 @@ namespace UI {
 
 namespace {
 std::deque<std::string> g_pending_scene_tab_requests;
+const std::string kPrimarySidebarGlobalPluginId = "__project_primary__";
 }
 
 void RequestCreateSceneTab(const std::string& plugin_id)
@@ -237,57 +238,53 @@ void EnsureDefaultPlugins()
     if (!plugins.empty())
         return;
 
+    EditorViewPlugin global_primary_plugin{};
+    global_primary_plugin.plugin_id = kPrimarySidebarGlobalPluginId;
+    global_primary_plugin.primary_views.push_back({ "explorer", "Explorer", RenderExplorer });
+    global_primary_plugin.primary_views.push_back({ "search", "Search", RenderSearch });
+    global_primary_plugin.primary_views.push_back({ "debug", "Debug", RenderDebug });
+    global_primary_plugin.primary_views.push_back({ "editor", "Editor", RenderEditor });
+    global_primary_plugin.primary_views.push_back({ "extensions", "Extensions", RenderExtensions });
+    global_primary_plugin.primary_bindings = {
+        { ActivityBarItem::Explorer, "explorer" },
+        { ActivityBarItem::Search, "search" },
+        { ActivityBarItem::Debug, "debug" },
+        { ActivityBarItem::Editor, "editor" },
+        { ActivityBarItem::Extensions, "extensions" }
+    };
+    plugins.push_back(std::move(global_primary_plugin));
+
     Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
     const auto& scene_plugins = Scenes::ScenePluginRegistry::Instance().GetPlugins();
 
     for (const auto& scene_plugin : scene_plugins) {
         const auto* scene_views = Scenes::ScenePluginRegistry::Instance().GetViews(scene_plugin.id);
-        if (!scene_views) {
-            continue;
-        }
 
         EditorViewPlugin plugin{};
         plugin.plugin_id = scene_plugin.id;
 
-        plugin.primary_views.push_back({ "explorer", "Explorer", RenderExplorer });
-        plugin.primary_views.push_back({ "search", "Search", RenderSearch });
-        if (scene_views->primary_view_renderer) {
-            const std::string primary_id = scene_views->primary_view_id.empty() ? "scene" : scene_views->primary_view_id;
-            const std::string primary_title = scene_views->primary_view_title.empty() ? "Scene" : scene_views->primary_view_title;
-            plugin.primary_views.push_back({ primary_id, primary_title, scene_views->primary_view_renderer });
-        }
-        plugin.primary_views.push_back({ "debug", "Debug", RenderDebug });
-        plugin.primary_views.push_back({ "editor", "Editor", RenderEditor });
-        plugin.primary_views.push_back({ "extensions", "Extensions", RenderExtensions });
-
-        for (const auto& view : scene_views->secondary_views) {
-            if (!view.renderer) {
-                continue;
+        if (scene_views) {
+            for (const auto& view : scene_views->secondary_views) {
+                if (!view.renderer) {
+                    continue;
+                }
+                plugin.secondary_views.push_back({ view.id, view.title, view.renderer });
             }
-            plugin.secondary_views.push_back({ view.id, view.title, view.renderer });
-        }
 
-        for (const auto& view : scene_views->panel_views) {
-            if (!view.renderer) {
-                continue;
+            for (const auto& view : scene_views->panel_views) {
+                if (!view.renderer) {
+                    continue;
+                }
+                plugin.panel_views.push_back({ view.id, view.title, view.renderer });
             }
-            plugin.panel_views.push_back({ view.id, view.title, view.renderer });
+
+            plugin.default_secondary_id = !scene_views->default_secondary_id.empty()
+                ? scene_views->default_secondary_id
+                : (!plugin.secondary_views.empty() ? plugin.secondary_views.front().id : "");
+            plugin.default_panel_id = !scene_views->default_panel_id.empty()
+                ? scene_views->default_panel_id
+                : (!plugin.panel_views.empty() ? plugin.panel_views.front().id : "");
         }
-
-        plugin.primary_bindings = {
-            { ActivityBarItem::Explorer, "explorer" },
-            { ActivityBarItem::Search, "search" },
-            { ActivityBarItem::Debug, "debug" },
-            { ActivityBarItem::Editor, "editor" },
-            { ActivityBarItem::Extensions, "extensions" }
-        };
-
-        plugin.default_secondary_id = !scene_views->default_secondary_id.empty()
-            ? scene_views->default_secondary_id
-            : (!plugin.secondary_views.empty() ? plugin.secondary_views.front().id : "");
-        plugin.default_panel_id = !scene_views->default_panel_id.empty()
-            ? scene_views->default_panel_id
-            : (!plugin.panel_views.empty() ? plugin.panel_views.front().id : "");
 
         plugins.push_back(std::move(plugin));
     }
@@ -366,10 +363,17 @@ std::string GetDefaultScenePluginId()
 {
     EnsureDefaultPlugins();
     const auto& plugins = PluginRegistry();
-    if (plugins.empty()) {
-        return {};
+    for (const auto& plugin : plugins) {
+        if (plugin.plugin_id != kPrimarySidebarGlobalPluginId) {
+            return plugin.plugin_id;
+        }
     }
-    return plugins.front().plugin_id;
+    return {};
+}
+
+const std::string& GetPrimarySidebarGlobalPluginId()
+{
+    return kPrimarySidebarGlobalPluginId;
 }
 
 const EditorViewPlugin* GetViewPluginByPluginId(const std::string& plugin_id)
@@ -379,7 +383,8 @@ const EditorViewPlugin* GetViewPluginByPluginId(const std::string& plugin_id)
 
 ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item)
 {
-    const auto* plugin = FindPluginById(plugin_id);
+    (void)plugin_id;
+    const auto* plugin = FindPluginById(kPrimarySidebarGlobalPluginId);
     if (!plugin) {
         return { "empty", "Empty", nullptr };
     }

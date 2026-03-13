@@ -28,6 +28,7 @@ struct EditorViewPlugin {
 const std::vector<DefaultViewConfig>& GetDefaultViewConfigs();
 void RegisterViewPlugin(const EditorViewPlugin& plugin);
 std::string GetDefaultScenePluginId();
+const std::string& GetPrimarySidebarGlobalPluginId();
 const EditorViewPlugin* GetViewPluginByPluginId(const std::string& plugin_id);
 ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, ActivityBarItem item);
 ViewDefinition GetDefaultSecondaryViewForPlugin(const std::string& plugin_id);

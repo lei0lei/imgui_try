@@ -29,9 +29,6 @@ const bool kRegistered2DRenderer = []() {
         Scenes::Scene2DViews::RenderCanvas(content_min, content_max, tab);
     });
     Scenes::SceneViewContributions views{};
-    views.primary_view_id = "scene";
-    views.primary_view_title = "Scene";
-    views.primary_view_renderer = &Scenes::Scene2DViews::RenderHierarchy;
     views.secondary_views.push_back({ "outline", "Outline", &Scenes::Scene2DViews::RenderOutline });
     views.secondary_views.push_back({ "properties", "Properties", &Scenes::Scene2DViews::RenderProperties });
     views.default_secondary_id = "outline";

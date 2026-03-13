@@ -29,9 +29,6 @@ const bool kRegistered3DRenderer = []() {
         Scenes::Scene3DViews::RenderCanvas(content_min, content_max, tab);
     });
     Scenes::SceneViewContributions views{};
-    views.primary_view_id = "scene";
-    views.primary_view_title = "Scene";
-    views.primary_view_renderer = &Scenes::Scene3DViews::RenderHierarchy;
     views.secondary_views.push_back({ "outline", "Outline", &Scenes::Scene3DViews::RenderOutline });
     views.secondary_views.push_back({ "properties", "Properties", &Scenes::Scene3DViews::RenderProperties });
     views.default_secondary_id = "outline";
