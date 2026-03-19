@@ -36,11 +36,46 @@ void RenderStatusBarUI(SDL_Window* window, const StatusBarViewModel& view_model,
     ImGui::SetCursorPosY((status_bar_h - ImGui::GetTextLineHeight()) * 0.5f);
     ImGui::TextUnformatted(view_model.message.c_str());
     ImGui::PopStyleColor();
+
+    const float right_region_w = 420.0f;
+    const float separator_x = win_size.x - right_region_w;
+    draw_list->AddLine(
+        ImVec2(win_pos.x + separator_x, win_pos.y + 2.0f),
+        ImVec2(win_pos.x + separator_x, win_pos.y + win_size.y - 2.0f),
+        ImGui::GetColorU32(colors.panel_border),
+        1.0f);
+
     if (view_model.progress >= 0.0f && view_model.progress <= 1.0f) {
         ImGui::SameLine();
-        ImGui::SetCursorPosX(win_size.x - sizes.status_bar_progress_right_margin);
+        ImGui::SetCursorPosX(separator_x - sizes.status_bar_progress_right_margin);
         ImGui::ProgressBar(view_model.progress, ImVec2(sizes.status_bar_progress_w, sizes.status_bar_progress_h));
     }
+
+    if (view_model.scene_status_bar_extension && *view_model.scene_status_bar_extension) {
+        const ImVec2 region_min = ImVec2(win_pos.x + separator_x + 8.0f, win_pos.y);
+        const ImVec2 region_max = ImVec2(win_pos.x + win_size.x - 6.0f, win_pos.y + win_size.y);
+        ImGui::PushClipRect(region_min, region_max, true);
+        ImGui::SetCursorScreenPos(ImVec2(region_min.x, region_min.y + 1.0f));
+
+        StatusBarExtensionContext ctx{};
+        ctx.region = StatusBarExtensionRegion::Right;
+        ctx.region_min = region_min;
+        ctx.region_max = region_max;
+        ctx.status_bar_h = status_bar_h;
+        ctx.active_tab = view_model.active_tab;
+        ctx.trigger_scene_action = [
+            active_tab = view_model.active_tab,
+            scene_status_bar_action_handler = view_model.scene_status_bar_action_handler
+        ](const std::string& action_id) {
+            if (!active_tab || !scene_status_bar_action_handler || !(*scene_status_bar_action_handler) || action_id.empty()) {
+                return;
+            }
+            (*scene_status_bar_action_handler)(*active_tab, action_id);
+        };
+        (*view_model.scene_status_bar_extension)(ctx);
+        ImGui::PopClipRect();
+    }
+
     ImGui::End();
     ImGui::PopStyleVar(3);
 }

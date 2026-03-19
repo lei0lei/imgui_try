@@ -2,6 +2,6 @@
 id=scene.node
 name=Node Editor Toolkit
 info=Build node graphs and execute scripts in output panel.
-author=imgui-try team
+author=lei0lei
 icon=NG
 mode=2

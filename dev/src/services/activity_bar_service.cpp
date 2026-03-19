@@ -37,10 +37,6 @@ int ActivityBarService::GetSelectedItem() const {
 }
 
 void ActivityBarService::SetSelectedItem(int index) {
-    if (index == static_cast<int>(ActivityBarItem::NodeEditor)) {
-        selected_item_ = static_cast<int>(ActivityBarItem::Explorer);
-        return;
-    }
     if (IsSelectableActivityItem(index))
         selected_item_ = index;
 }

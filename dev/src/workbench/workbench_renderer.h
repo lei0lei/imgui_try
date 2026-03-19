@@ -34,6 +34,9 @@ public:
     void RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout);
 
 private:
+    void HandleCreateSceneTabRequests();
+    void SyncPrimarySidebarViewSelection(const std::string& primary_plugin_id, ActivityBarItem active_item);
+
     void RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w);
     void RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w);
     void RenderTitleBar(SDL_Window* window, float title_h);

@@ -23,7 +23,7 @@ PrimarySidebarPart::PrimarySidebarPart(IPrimarySidebarService& service)
 	 ActivityBarItem active_item)
  {
 	 PrimarySidebarViewModel vm{};
-	 vm.active_view = view_registry.GetActiveView(scene_plugin_id, ViewContainer::PrimarySidebar);
+		 vm.active_view = view_registry.GetActiveView(scene_plugin_id);
 	 vm.fallback_view = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, active_item);
 	 vm.is_visible = service_.IsVisible();
 	 vm.active_item = active_item;

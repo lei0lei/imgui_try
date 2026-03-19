@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../../services/editor_area_service.h"
+#include "node_editor_state.h"
 
 namespace NodeGraph {
 
@@ -20,7 +20,7 @@ struct ExecutionResult {
 // Get default Lua script for a node type.
 std::string GetDefaultNodeScript(const std::string& type);
 
-// Execute node graph for the given editor tab.
-ExecutionResult ExecuteGraph(const EditorTab& tab, bool parallel);
+// Execute node graph for the given node scene state.
+ExecutionResult ExecuteGraph(const Scenes::NodeEditor::NodeEditorState& state, bool parallel);
 
 } // namespace NodeGraph

@@ -1,13 +1,17 @@
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
+#include "../core/workbench_types.h"
 #include "../services/editor_area_service.h"
+#include "../services/view_types.h"
+#include "scene_context.h"
 
 namespace Scenes {
 
-using SceneCanvasRenderer = void(*)(ImVec2 content_min, ImVec2 content_max, EditorTab& tab);
+using SceneCanvasRenderer = void(*)(const SceneContext& ctx, EditorTab& tab);
 
 struct ScenePluginDescriptor {
     std::string id;
@@ -18,10 +22,33 @@ struct ScenePluginDescriptor {
     std::string folder;
 };
 
-class IScenePluginProvider {
-public:
-    virtual ~IScenePluginProvider() = default;
-    virtual ScenePluginDescriptor GetDescriptor() const = 0;
+struct SceneDebugVariable {
+    std::string name;
+    std::string value;
 };
+
+struct SceneDebugWatch {
+    std::string expression;
+    std::string value;
+};
+
+struct SceneDebugCallStackFrame {
+    std::string label;
+    std::string location;
+    bool is_active = false;
+};
+
+struct ScenePrimarySidebarDebugData {
+    std::vector<SceneDebugVariable> variables;
+    std::vector<SceneDebugWatch> watches;
+    std::vector<SceneDebugCallStackFrame> callstack;
+};
+
+using ScenePrimarySidebarDebugDataProvider = std::function<ScenePrimarySidebarDebugData(const EditorTab*)>;
+
+// Scene contributions to the global primary sidebar views.
+// Workbench remains the owner of the primary sidebar layout; scenes can only render optional content
+// inside the selected ActivityBarItem's default view (e.g. Debug / Editor).
+using ScenePrimarySidebarContributionRenderer = ViewRenderer;
 
 } // namespace Scenes

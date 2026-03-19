@@ -18,6 +18,10 @@ extern "C" {
 
 namespace NodeGraph {
 
+using Scenes::NodeEditor::Node;
+using Scenes::NodeEditor::NodeEditorState;
+using Scenes::NodeEditor::NodePortType;
+
 namespace {
 
 struct NodeValue {
@@ -36,26 +40,26 @@ struct NodeValue {
     std::string s;
 };
 
-NodeValue DefaultValueForPort(EditorTab::NodePortType type)
+NodeValue DefaultValueForPort(NodePortType type)
 {
     NodeValue v;
     switch (type) {
-        case EditorTab::NodePortType::Bool:
+        case NodePortType::Bool:
             v.type = NodeValue::Type::Bool;
             v.b = false;
             break;
-        case EditorTab::NodePortType::Int:
+        case NodePortType::Int:
             v.type = NodeValue::Type::Int;
             v.i = 0;
             break;
-        case EditorTab::NodePortType::Float:
-        case EditorTab::NodePortType::Double:
-        case EditorTab::NodePortType::Vector:
-        case EditorTab::NodePortType::Image:
+        case NodePortType::Float:
+        case NodePortType::Double:
+        case NodePortType::Vector:
+        case NodePortType::Image:
             v.type = NodeValue::Type::Double;
             v.d = 0.0;
             break;
-        case EditorTab::NodePortType::Text:
+        case NodePortType::Text:
             v.type = NodeValue::Type::String;
             v.s = "";
             break;
@@ -152,7 +156,7 @@ int LuaLog(lua_State* L)
     return 0;
 }
 
-std::string NormalizeNodeType(const EditorTab::Node& node)
+std::string NormalizeNodeType(const Node& node)
 {
     if (!node.type.empty()) {
         return node.type;
@@ -182,7 +186,7 @@ struct NodeEvalResult {
     std::vector<std::string> log;
 };
 
-NodeEvalResult EvaluateNodeLua(const EditorTab::Node& node,
+NodeEvalResult EvaluateNodeLua(const Node& node,
                                const std::vector<NodeValue>& inputs,
                                const std::vector<std::string>& input_names)
 {
@@ -294,22 +298,22 @@ std::string GetDefaultNodeScript(const std::string& type)
     return "function run(inputs)\n  return { Out = inputs[1] }\nend\n";
 }
 
-ExecutionResult ExecuteGraph(const EditorTab& tab, bool parallel)
+ExecutionResult ExecuteGraph(const NodeEditorState& state, bool parallel)
 {
     ExecutionResult result;
     result.parallel = parallel;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    if (tab.nodes.empty()) {
+    if (state.nodes.empty()) {
         result.log.push_back("No nodes to execute.");
         result.duration_ms = 0.0;
         return result;
     }
 
-    std::unordered_map<int, const EditorTab::Node*> nodes;
-    nodes.reserve(tab.nodes.size());
-    for (const auto& node : tab.nodes) {
+    std::unordered_map<int, const Node*> nodes;
+    nodes.reserve(state.nodes.size());
+    for (const auto& node : state.nodes) {
         nodes[node.id] = &node;
     }
 
@@ -317,11 +321,11 @@ ExecutionResult ExecuteGraph(const EditorTab& tab, bool parallel)
     std::unordered_map<int, std::vector<int>> adjacency;
     std::unordered_map<int, int> indegree;
 
-    for (const auto& node : tab.nodes) {
+    for (const auto& node : state.nodes) {
         indegree[node.id] = 0;
     }
 
-    for (const auto& link : tab.links) {
+    for (const auto& link : state.links) {
         auto from_it = nodes.find(link.from_node);
         auto to_it = nodes.find(link.to_node);
         if (from_it == nodes.end() || to_it == nodes.end()) {
@@ -375,7 +379,7 @@ ExecutionResult ExecuteGraph(const EditorTab& tab, bool parallel)
     for (const auto& layer : layers) {
         total_nodes += layer.size();
     }
-    if (total_nodes != tab.nodes.size()) {
+    if (total_nodes != state.nodes.size()) {
         result.success = false;
         result.error = "Graph contains cycles or disconnected nodes.";
         result.log.push_back(result.error);

@@ -13,12 +13,21 @@ StatusBarPart::StatusBarPart(INotificationService& service)
 {
 }
 
- void StatusBarPart::Render(SDL_Window* window, float status_bar_h, float title_h)
+ void StatusBarPart::Render(
+	 SDL_Window* window,
+	 float status_bar_h,
+	 float title_h,
+	 EditorTab* active_tab,
+	 const SceneStatusBarExtensionRenderer* scene_status_bar_extension,
+	 const std::function<void(EditorTab&, const std::string&)>* scene_status_bar_action_handler)
  {
 	 StatusBarViewModel vm{};
 	 const NotificationState& state = service_.GetState();
 	 vm.message = state.message;
 	 vm.progress = state.progress;
+	 vm.active_tab = active_tab;
+	 vm.scene_status_bar_extension = scene_status_bar_extension;
+	 vm.scene_status_bar_action_handler = scene_status_bar_action_handler;
 	 RenderStatusBarUI(window, vm, status_bar_h, title_h);
  }
 

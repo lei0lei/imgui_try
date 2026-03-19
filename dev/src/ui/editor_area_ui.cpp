@@ -246,7 +246,8 @@ static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab*
 
     Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
     if (auto renderer = Scenes::ScenePluginRegistry::Instance().GetRenderer(active_tab->scene_plugin_id)) {
-        renderer(content_min, content_max, *active_tab);
+        const Scenes::SceneContext ctx{ content_min, content_max, GetWorkbenchTheme(), GetWorkbenchMetrics() };
+        renderer(ctx, *active_tab);
     } else {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
         draw_list->AddRectFilled(content_min, content_max, IM_COL32(30, 30, 32, 255));

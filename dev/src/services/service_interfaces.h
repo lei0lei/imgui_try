@@ -4,12 +4,11 @@
 #include <vector>
 #include "../core/workbench_types.h"
 #include "../command/command_ids.h"
+#include "editor_tab.h"
+#include "view_types.h"
 
 struct LayoutState;
 struct NotificationState;
-struct EditorTab;
-struct ViewDefinition;
-enum class ViewContainer;
 
 class IActivityBarService {
 public:
@@ -81,10 +80,10 @@ public:
 class IViewRegistry {
 public:
     virtual ~IViewRegistry() = default;
-    virtual void RegisterView(const std::string& scene_key, ViewContainer container, const ViewDefinition& view) = 0;
-    virtual const std::vector<ViewDefinition>& GetViews(const std::string& scene_key, ViewContainer container) const = 0;
-    virtual int GetActiveViewIndex(const std::string& scene_key, ViewContainer container) const = 0;
-    virtual void SetActiveViewIndex(const std::string& scene_key, ViewContainer container, int index) = 0;
-    virtual void SetActiveViewById(const std::string& scene_key, ViewContainer container, const std::string& id) = 0;
-    virtual const ViewDefinition* GetActiveView(const std::string& scene_key, ViewContainer container) const = 0;
+    virtual void RegisterView(const std::string& scene_key, const ViewDefinition& view) = 0;
+    virtual const std::vector<ViewDefinition>& GetViews(const std::string& scene_key) const = 0;
+    virtual int GetActiveViewIndex(const std::string& scene_key) const = 0;
+    virtual void SetActiveViewIndex(const std::string& scene_key, int index) = 0;
+    virtual void SetActiveViewById(const std::string& scene_key, const std::string& id) = 0;
+    virtual const ViewDefinition* GetActiveView(const std::string& scene_key) const = 0;
 };

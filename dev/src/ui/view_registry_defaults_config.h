@@ -9,7 +9,6 @@ namespace UI {
 
 struct DefaultViewConfig {
     std::string plugin_id;
-    ViewContainer container;
     std::string id;
     std::string title;
     ViewRenderer renderer;
@@ -30,5 +29,8 @@ ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, Acti
 
 void RequestCreateSceneTab(const std::string& plugin_id);
 bool ConsumeCreateSceneTabRequest(std::string& plugin_id);
+
+void SetExplorerRootPath(const std::string& root_path);
+const std::string& GetExplorerRootPath();
 
 } // namespace UI
