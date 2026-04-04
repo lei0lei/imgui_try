@@ -28,9 +28,22 @@ std::string ViewRegistry::NormalizeSceneKey(const std::string& scene_key)
 void ViewRegistry::RegisterView(const std::string& scene_key, const ViewDefinition& view)
 {
     SceneBucket& bucket = scene_buckets_[NormalizeSceneKey(scene_key)];
-    const int index = static_cast<int>(bucket.views.size());
-    bucket.views.push_back(view);
-    bucket.id_to_index[view.id] = index;
+    const auto existing = bucket.id_to_index.find(view.id);
+    if (existing != bucket.id_to_index.end()) {
+        const int index = existing->second;
+        if (index >= 0 && index < static_cast<int>(bucket.views.size())) {
+            bucket.views[index] = view; // overwrite existing definition
+        } else {
+            // Defensive: map says it exists but vector is out-of-sync. Rebuild by appending.
+            const int new_index = static_cast<int>(bucket.views.size());
+            bucket.views.push_back(view);
+            bucket.id_to_index[view.id] = new_index;
+        }
+    } else {
+        const int index = static_cast<int>(bucket.views.size());
+        bucket.views.push_back(view);
+        bucket.id_to_index[view.id] = index;
+    }
     if (bucket.active_index < 0) {
         bucket.active_index = 0;
     }

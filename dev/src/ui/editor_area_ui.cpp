@@ -9,7 +9,7 @@
 #include "imgui.h"
 #include "../scenes/scene_plugin_registry.h"
 #include "../workbench/workbench_config.h"
-#include <algorithm>
+#include <cmath>
 
 namespace UI {
 
@@ -240,13 +240,29 @@ static void DrawTabBar(ImVec2 tab_bar_min, ImVec2 tab_bar_max,
 }
 
 // 绘制编辑器内容区域
-static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab)
+namespace {
+class NoopEventBus final : public IEventBus {
+public:
+    void Publish(const std::string&, std::string) override {}
+    SubscriptionId Subscribe(const std::string&, Handler) override { return 0; }
+    void Unsubscribe(SubscriptionId) override {}
+    void Dispatch() override {}
+};
+
+IEventBus& GetNoopEventBus()
+{
+    static NoopEventBus bus;
+    return bus;
+}
+} // namespace
+
+static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab* active_tab, IEventBus& event_bus)
 {
     if (!active_tab) return;
 
     Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
     if (auto renderer = Scenes::ScenePluginRegistry::Instance().GetRenderer(active_tab->scene_plugin_id)) {
-        const Scenes::SceneContext ctx{ content_min, content_max, GetWorkbenchTheme(), GetWorkbenchMetrics() };
+        const Scenes::SceneContext ctx{ content_min, content_max, GetWorkbenchTheme(), GetWorkbenchMetrics(), event_bus };
         renderer(ctx, *active_tab);
     } else {
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -257,21 +273,16 @@ static void DrawEditorContent(ImVec2 content_min, ImVec2 content_max, EditorTab*
 
 EditorArea::EditorArea() = default;
 
-void EditorArea::Draw(
-    float left_offset,
-    float right_offset,
-    float title_h,
-    float status_bar_h,
-    bool block_tab_clicks,
-    const ViewModel& view_model)
+EditorArea::Result EditorArea::Draw(const Props& props)
 {
+    Result result{};
     ImGuiIO& io = ImGui::GetIO();
     
     // 计算编辑器区域
-    float bottom_offset = status_bar_h;
+    float bottom_offset = props.status_bar_h;
     
-    ImVec2 area_min = ImVec2(left_offset, title_h);
-    ImVec2 area_max = ImVec2(io.DisplaySize.x - right_offset, io.DisplaySize.y - bottom_offset);
+    ImVec2 area_min = ImVec2(props.left_offset, props.title_h);
+    ImVec2 area_max = ImVec2(io.DisplaySize.x - props.right_offset, io.DisplaySize.y - bottom_offset);
     
     // 创建编辑器窗口
     ImGui::SetNextWindowPos(area_min);
@@ -288,7 +299,7 @@ void EditorArea::Draw(
     
     ImGui::Begin("EditorArea", nullptr, flags);
     
-    const std::vector<EditorTab>* tabs_ptr = view_model.get_tabs ? &view_model.get_tabs() : nullptr;
+    const std::vector<EditorTab>* tabs_ptr = props.tabs;
     
     if (!tabs_ptr || tabs_ptr->empty()) {
         const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
@@ -307,35 +318,48 @@ void EditorArea::Draw(
         ImVec2 tab_bar_max = ImVec2(area_max.x, area_min.y + tab_bar_height);
         
         // 处理标签栏交互
-        int closed_tab = -1;
-        int active_tab = -1;
-        int move_from = -1;
-        int move_to = -1;
-        DrawTabBar(tab_bar_min, tab_bar_max, *tabs_ptr, closed_tab, active_tab, move_from, move_to, block_tab_clicks);
-        
-        // 处理用户操作（通过 service）
-        if (closed_tab >= 0 && view_model.close_tab) {
-            view_model.close_tab(closed_tab);
-        }
-        if (active_tab >= 0 && view_model.activate_tab) {
-            view_model.activate_tab(active_tab);
-        }
-        if (move_from >= 0 && move_to >= 0 && move_from != move_to && view_model.move_tab) {
-            view_model.move_tab(move_from, move_to);
-        }
-
-        // 重新获取 tabs 指针（可能已更新）
-        tabs_ptr = view_model.get_tabs ? &view_model.get_tabs() : nullptr;
+        DrawTabBar(
+            tab_bar_min,
+            tab_bar_max,
+            *tabs_ptr,
+            result.closed_tab,
+            result.active_tab,
+            result.move_from,
+            result.move_to,
+            props.block_tab_clicks
+        );
         
         // 只有在还有tabs的情况下才绘制编辑器内容
         if (tabs_ptr && !tabs_ptr->empty()) {
             // 查找激活的标签
-            EditorTab* active_tab_ptr = view_model.get_active_tab ? view_model.get_active_tab() : nullptr;
+            EditorTab* active_tab_ptr = props.active_tab;
+            IEventBus* bus_ptr = props.event_bus;
+            IEventBus& event_bus = bus_ptr ? *bus_ptr : GetNoopEventBus();
             
             // 绘制编辑器内容
             ImVec2 content_min = ImVec2(area_min.x, tab_bar_max.y);
             ImVec2 content_max = area_max;
-            DrawEditorContent(content_min, content_max, active_tab_ptr);
+            const bool tab_interaction_happened =
+                (result.closed_tab >= 0) ||
+                (result.active_tab >= 0) ||
+                (result.move_from >= 0 && result.move_to >= 0 && result.move_from != result.move_to);
+            const bool block_content_inputs = props.block_tab_clicks || tab_interaction_happened;
+
+            ImGui::SetCursorScreenPos(content_min);
+            const ImGuiWindowFlags content_flags =
+                ImGuiWindowFlags_NoTitleBar |
+                ImGuiWindowFlags_NoResize |
+                ImGuiWindowFlags_NoMove |
+                ImGuiWindowFlags_NoScrollbar |
+                ImGuiWindowFlags_NoScrollWithMouse |
+                ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoBringToFrontOnFocus |
+                ImGuiWindowFlags_NoNav |
+                (block_content_inputs ? ImGuiWindowFlags_NoInputs : 0);
+
+            ImGui::BeginChild("##EditorAreaContent", ImVec2(content_max.x - content_min.x, content_max.y - content_min.y), false, content_flags);
+            DrawEditorContent(content_min, content_max, active_tab_ptr, event_bus);
+            ImGui::EndChild();
         } else {
             // 关闭最后一个tab后，绘制欢迎界面
             const WorkbenchThemeColors& colors = GetWorkbenchTheme().colors;
@@ -349,6 +373,7 @@ void EditorArea::Draw(
     
     ImGui::End();
     ImGui::PopStyleVar(3);
+    return result;
 }
 
 } // namespace UI

@@ -12,6 +12,7 @@
 #include <vector>
 #include <cstdio>
 
+
 ServiceOverrides Workbench::BuildDefaultServiceOverrides()
 {
     return ServiceOverrides{};
@@ -126,7 +127,7 @@ Workbench::Workbench(SDL_Window* window, const ServiceOverrides& service_overrid
           status_bar_part_(services_.GetNotificationService()),
           activity_bar_part_(services_.GetActivityBarService()),
           primary_sidebar_part_(services_.GetPrimarySidebarService()),
-          editor_area_part_(services_.GetEditorAreaService()),
+          editor_area_part_(services_.GetEditorAreaService(), services_.GetEventBus()),
           command_controller_(
                 command_service_,
                 services_.GetTitleBarService(),

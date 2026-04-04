@@ -7,8 +7,8 @@
 #include "../scene_layout.h"
 #include "../scene_state.h"
 #include "../../command/command_ids.h"
-#include "../../workbench/title_bar_extension_widgets.h"
-#include "../../workbench/workbench_config.h"
+#include "../../core/workbench_theme.h"
+#include "../../ui/title_bar_extension_widgets.h"
 
 #include <algorithm>
 #include <cstdlib>

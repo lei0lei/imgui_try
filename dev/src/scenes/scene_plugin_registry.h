@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "scene_plugin_interface.h"
-#include "../workbench/title_bar_extension.h"
+#include "../core/title_bar_extension.h"
 #include "../workbench/status_bar_extension.h"
 
 namespace Scenes {
@@ -51,13 +51,6 @@ private:
 
     bool loaded_ = false;
     std::vector<ScenePluginDescriptor> plugins_;
-    std::unordered_map<std::string, SceneCanvasRenderer> renderers_;
-    std::unordered_map<std::string, SceneTitleBarExtensionRenderer> title_bar_extensions_;
-    std::unordered_map<std::string, SceneStatusBarExtensionRenderer> status_bar_extensions_;
-    std::unordered_map<std::string, std::function<void(EditorTab&, const std::string&)>> title_bar_action_handlers_;
-    std::unordered_map<std::string, std::function<float(float, const EditorTab*)>> title_bar_extension_width_resolvers_;
-    std::unordered_map<std::string, ScenePrimarySidebarDebugDataProvider> primary_sidebar_debug_data_providers_;
-    std::unordered_map<std::string, std::unordered_map<int, ScenePrimarySidebarContributionRenderer>> primary_sidebar_contribution_renderers_;
     std::vector<ScenePluginLoadDiagnostic> diagnostics_;
 };
 

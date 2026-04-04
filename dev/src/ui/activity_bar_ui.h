@@ -1,7 +1,6 @@
 
 #pragma once
 #include <SDL3/SDL.h>
-#include <functional>
 #include "imgui.h"
 
 typedef struct VkPhysicalDevice_T* VkPhysicalDevice;
@@ -16,9 +15,8 @@ struct ActivityBarResult {
 	bool item_clicked = false;
 };
 
-struct ActivityBarViewModel {
+struct ActivityBarProps {
     int selected_index = 0; // 1-based index matching ActivityBarItem enum order
-    std::function<void(int)> on_select;
 };
 
 void SetActivityBarIconTexture(ActivityBarItem item, ImTextureID texture_id);
@@ -35,4 +33,4 @@ bool InitializeActivityBarIconSystem(
 );
 void ShutdownActivityBarIconSystem();
 
-ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model);
+ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarProps& props);

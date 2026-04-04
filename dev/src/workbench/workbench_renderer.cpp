@@ -118,9 +118,11 @@ void WorkbenchRenderer::HandleCreateSceneTabRequests()
 
 void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
 {
+    // Dispatch queued cross-scene events once per frame.
+    services_.GetEventBus().Dispatch();
+
     HandleCreateSceneTabRequests();
 
-    const int active_tab_index_before = services_.GetEditorAreaService().GetActiveTabIndex();
     bool block_tab_clicks = services_.GetTitleBarService().GetActiveMenu() != TitleBarMenu::None;
     block_tab_clicks = block_tab_clicks || services_.GetTitleBarService().ConsumeBlockTabClicksOnce();
     RenderEditorArea(
@@ -130,19 +132,6 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
         metrics.status_bar_h,
         block_tab_clicks
     );
-
-    const int active_tab_index_after = services_.GetEditorAreaService().GetActiveTabIndex();
-    if (active_tab_index_after != active_tab_index_before) {
-        const LayoutInfo updated_layout = ComputeLayout(metrics);
-
-        RenderEditorArea(
-            updated_layout.left_offset,
-            updated_layout.right_offset,
-            metrics.title_h,
-            metrics.status_bar_h,
-            true
-        );
-    }
 }
 
 void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w)

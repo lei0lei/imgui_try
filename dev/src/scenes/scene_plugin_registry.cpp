@@ -188,6 +188,13 @@ std::filesystem::path SceneRootPath()
 #ifdef IMGUITRY_SCENES_ROOT
     return std::filesystem::path(IMGUITRY_SCENES_ROOT);
 #else
+    // Default repository layout keeps scene plugins under dev/src/scenes.
+    // We also try a fallback for older layouts.
+    std::error_code ec;
+    const std::filesystem::path dev_root = std::filesystem::path("dev") / "src" / "scenes";
+    if (std::filesystem::exists(dev_root, ec) && std::filesystem::is_directory(dev_root, ec)) {
+        return dev_root;
+    }
     return std::filesystem::path("src/scenes");
 #endif
 }
@@ -219,11 +226,6 @@ void ScenePluginRegistry::RegisterRenderer(const std::string& plugin_id, SceneCa
         return;
     }
     GlobalRenderers()[plugin_id] = renderer;
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        registry.renderers_[plugin_id] = renderer;
-    }
 }
 
 void ScenePluginRegistry::RegisterTitleBarExtension(const std::string& plugin_id, SceneTitleBarExtensionRenderer renderer)
@@ -233,14 +235,6 @@ void ScenePluginRegistry::RegisterTitleBarExtension(const std::string& plugin_id
     }
 
     GlobalTitleBarExtensions()[plugin_id] = std::move(renderer);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalTitleBarExtensions().find(plugin_id);
-        if (it != GlobalTitleBarExtensions().end()) {
-            registry.title_bar_extensions_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::RegisterStatusBarExtension(const std::string& plugin_id, SceneStatusBarExtensionRenderer renderer)
@@ -250,14 +244,6 @@ void ScenePluginRegistry::RegisterStatusBarExtension(const std::string& plugin_i
     }
 
     GlobalStatusBarExtensions()[plugin_id] = std::move(renderer);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalStatusBarExtensions().find(plugin_id);
-        if (it != GlobalStatusBarExtensions().end()) {
-            registry.status_bar_extensions_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::RegisterTitleBarActionHandler(const std::string& plugin_id, std::function<void(EditorTab&, const std::string&)> handler)
@@ -267,14 +253,6 @@ void ScenePluginRegistry::RegisterTitleBarActionHandler(const std::string& plugi
     }
 
     GlobalTitleBarActionHandlers()[plugin_id] = std::move(handler);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalTitleBarActionHandlers().find(plugin_id);
-        if (it != GlobalTitleBarActionHandlers().end()) {
-            registry.title_bar_action_handlers_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::RegisterTitleBarExtensionWidthResolver(const std::string& plugin_id, std::function<float(float, const EditorTab*)> resolver)
@@ -284,14 +262,6 @@ void ScenePluginRegistry::RegisterTitleBarExtensionWidthResolver(const std::stri
     }
 
     GlobalTitleBarExtensionWidthResolvers()[plugin_id] = std::move(resolver);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalTitleBarExtensionWidthResolvers().find(plugin_id);
-        if (it != GlobalTitleBarExtensionWidthResolvers().end()) {
-            registry.title_bar_extension_width_resolvers_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::RegisterPrimarySidebarDebugDataProvider(const std::string& plugin_id, ScenePrimarySidebarDebugDataProvider provider)
@@ -301,14 +271,6 @@ void ScenePluginRegistry::RegisterPrimarySidebarDebugDataProvider(const std::str
     }
 
     GlobalPrimarySidebarDebugDataProviders()[plugin_id] = std::move(provider);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalPrimarySidebarDebugDataProviders().find(plugin_id);
-        if (it != GlobalPrimarySidebarDebugDataProviders().end()) {
-            registry.primary_sidebar_debug_data_providers_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::RegisterPrimarySidebarContributionRenderer(const std::string& plugin_id, ActivityBarItem item, ScenePrimarySidebarContributionRenderer renderer)
@@ -318,26 +280,11 @@ void ScenePluginRegistry::RegisterPrimarySidebarContributionRenderer(const std::
     }
 
     GlobalPrimarySidebarContributionRenderers()[plugin_id][static_cast<int>(item)] = std::move(renderer);
-
-    ScenePluginRegistry& registry = Instance();
-    if (registry.loaded_) {
-        auto it = GlobalPrimarySidebarContributionRenderers().find(plugin_id);
-        if (it != GlobalPrimarySidebarContributionRenderers().end()) {
-            registry.primary_sidebar_contribution_renderers_[plugin_id] = it->second;
-        }
-    }
 }
 
 void ScenePluginRegistry::Load()
 {
     plugins_.clear();
-    renderers_.clear();
-    title_bar_extensions_.clear();
-    status_bar_extensions_.clear();
-    title_bar_action_handlers_.clear();
-    title_bar_extension_width_resolvers_.clear();
-    primary_sidebar_debug_data_providers_.clear();
-    primary_sidebar_contribution_renderers_.clear();
     diagnostics_.clear();
 
     std::unordered_map<std::string, std::filesystem::path> seen_plugin_ids;
@@ -374,45 +321,13 @@ void ScenePluginRegistry::Load()
     }
 
     for (const auto& plugin : plugins_) {
-        auto it = GlobalRenderers().find(plugin.id);
-        if (it != GlobalRenderers().end()) {
-            renderers_[plugin.id] = it->second;
-        } else {
+        const bool has_renderer = (GlobalRenderers().find(plugin.id) != GlobalRenderers().end());
+        if (!has_renderer) {
             AddDiagnostic(diagnostics_,
                 ScenePluginDiagnosticSeverity::Warning,
                 plugin.id,
                 root / plugin.folder / "scene.plugin",
                 "No renderer registered for plugin id. UI will show fallback canvas.");
-        }
-
-        auto ext_it = GlobalTitleBarExtensions().find(plugin.id);
-        if (ext_it != GlobalTitleBarExtensions().end()) {
-            title_bar_extensions_[plugin.id] = ext_it->second;
-        }
-
-        auto status_ext_it = GlobalStatusBarExtensions().find(plugin.id);
-        if (status_ext_it != GlobalStatusBarExtensions().end()) {
-            status_bar_extensions_[plugin.id] = status_ext_it->second;
-        }
-
-        auto action_it = GlobalTitleBarActionHandlers().find(plugin.id);
-        if (action_it != GlobalTitleBarActionHandlers().end()) {
-            title_bar_action_handlers_[plugin.id] = action_it->second;
-        }
-
-        auto width_it = GlobalTitleBarExtensionWidthResolvers().find(plugin.id);
-        if (width_it != GlobalTitleBarExtensionWidthResolvers().end()) {
-            title_bar_extension_width_resolvers_[plugin.id] = width_it->second;
-        }
-
-        auto debug_provider_it = GlobalPrimarySidebarDebugDataProviders().find(plugin.id);
-        if (debug_provider_it != GlobalPrimarySidebarDebugDataProviders().end()) {
-            primary_sidebar_debug_data_providers_[plugin.id] = debug_provider_it->second;
-        }
-
-        auto contrib_it = GlobalPrimarySidebarContributionRenderers().find(plugin.id);
-        if (contrib_it != GlobalPrimarySidebarContributionRenderers().end()) {
-            primary_sidebar_contribution_renderers_[plugin.id] = contrib_it->second;
         }
     }
 
@@ -443,62 +358,44 @@ const ScenePluginDescriptor* ScenePluginRegistry::FindPluginById(const std::stri
 
 SceneCanvasRenderer ScenePluginRegistry::GetRenderer(const std::string& plugin_id) const
 {
-    auto it = renderers_.find(plugin_id);
-    if (it == renderers_.end()) {
-        return nullptr;
-    }
-    return it->second;
+    auto it = GlobalRenderers().find(plugin_id);
+    return (it == GlobalRenderers().end()) ? nullptr : it->second;
 }
 
 const SceneTitleBarExtensionRenderer* ScenePluginRegistry::GetTitleBarExtension(const std::string& plugin_id) const
 {
-    auto it = title_bar_extensions_.find(plugin_id);
-    if (it == title_bar_extensions_.end()) {
-        return nullptr;
-    }
-    return &it->second;
+    auto it = GlobalTitleBarExtensions().find(plugin_id);
+    return (it == GlobalTitleBarExtensions().end()) ? nullptr : &it->second;
 }
 
 const SceneStatusBarExtensionRenderer* ScenePluginRegistry::GetStatusBarExtension(const std::string& plugin_id) const
 {
-    auto it = status_bar_extensions_.find(plugin_id);
-    if (it == status_bar_extensions_.end()) {
-        return nullptr;
-    }
-    return &it->second;
+    auto it = GlobalStatusBarExtensions().find(plugin_id);
+    return (it == GlobalStatusBarExtensions().end()) ? nullptr : &it->second;
 }
 
 const std::function<void(EditorTab&, const std::string&)>* ScenePluginRegistry::GetTitleBarActionHandler(const std::string& plugin_id) const
 {
-    auto it = title_bar_action_handlers_.find(plugin_id);
-    if (it == title_bar_action_handlers_.end()) {
-        return nullptr;
-    }
-    return &it->second;
+    auto it = GlobalTitleBarActionHandlers().find(plugin_id);
+    return (it == GlobalTitleBarActionHandlers().end()) ? nullptr : &it->second;
 }
 
 const std::function<float(float, const EditorTab*)>* ScenePluginRegistry::GetTitleBarExtensionWidthResolver(const std::string& plugin_id) const
 {
-    auto it = title_bar_extension_width_resolvers_.find(plugin_id);
-    if (it == title_bar_extension_width_resolvers_.end()) {
-        return nullptr;
-    }
-    return &it->second;
+    auto it = GlobalTitleBarExtensionWidthResolvers().find(plugin_id);
+    return (it == GlobalTitleBarExtensionWidthResolvers().end()) ? nullptr : &it->second;
 }
 
 const ScenePrimarySidebarDebugDataProvider* ScenePluginRegistry::GetPrimarySidebarDebugDataProvider(const std::string& plugin_id) const
 {
-    auto it = primary_sidebar_debug_data_providers_.find(plugin_id);
-    if (it == primary_sidebar_debug_data_providers_.end()) {
-        return nullptr;
-    }
-    return &it->second;
+    auto it = GlobalPrimarySidebarDebugDataProviders().find(plugin_id);
+    return (it == GlobalPrimarySidebarDebugDataProviders().end()) ? nullptr : &it->second;
 }
 
 const ScenePrimarySidebarContributionRenderer* ScenePluginRegistry::GetPrimarySidebarContributionRenderer(const std::string& plugin_id, ActivityBarItem item) const
 {
-    auto plugin_it = primary_sidebar_contribution_renderers_.find(plugin_id);
-    if (plugin_it == primary_sidebar_contribution_renderers_.end()) {
+    auto plugin_it = GlobalPrimarySidebarContributionRenderers().find(plugin_id);
+    if (plugin_it == GlobalPrimarySidebarContributionRenderers().end()) {
         return nullptr;
     }
     const auto item_it = plugin_it->second.find(static_cast<int>(item));

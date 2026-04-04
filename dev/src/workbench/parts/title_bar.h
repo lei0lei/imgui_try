@@ -2,7 +2,7 @@
  #include <SDL3/SDL.h>
 
 #include "../../services/service_interfaces.h"
-#include "../title_bar_extension.h"
+#include "../../core/title_bar_extension.h"
 
  class TitleBarPart {
  public:

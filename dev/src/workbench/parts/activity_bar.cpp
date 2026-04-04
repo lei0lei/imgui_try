@@ -14,10 +14,13 @@ ActivityBarPart::ActivityBarPart(IActivityBarService& service)
 
  ActivityBarResult ActivityBarPart::Render(float title_h, float status_bar_h, float width)
  {
-	 ActivityBarViewModel vm{};
-	 vm.selected_index = service_.GetSelectedItem();
-	 vm.on_select = [this](int index) { service_.SetSelectedItem(index); };
-	 return DrawActivityBarUI(title_h, status_bar_h, width, vm);
+	 ActivityBarProps props{};
+	 props.selected_index = service_.GetSelectedItem();
+	 ActivityBarResult result = DrawActivityBarUI(title_h, status_bar_h, width, props);
+	 if (result.item_clicked) {
+		 service_.SetSelectedItem(static_cast<int>(result.selected_item));
+	 }
+	 return result;
  }
 
  IActivityBarService& ActivityBarPart::GetService()

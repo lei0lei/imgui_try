@@ -103,7 +103,7 @@ void ShutdownActivityBarIconSystem()
     IconTextureManagerShutdown();
 }
 
-ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model)
+ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarProps& props)
 {
     ActivityBarResult result{};
     ImGuiIO& io = ImGui::GetIO();
@@ -153,7 +153,7 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
     constexpr int item_count = sizeof(items) / sizeof(items[0]);
     float item_size = width;
     float item_y = window_pos.y + sizes.activity_bar_padding_y;
-    int selected = view_model.selected_index;
+    int selected = props.selected_index;
     for (int i = 0; i < item_count; ++i) {
         ImVec2 item_min = ImVec2(window_pos.x, item_y);
         ImVec2 item_max = ImVec2(window_pos.x + width, item_y + item_size);
@@ -209,8 +209,6 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
         }
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             selected = static_cast<int>(items[i].id);
-            if (view_model.on_select)
-                view_model.on_select(selected);
             result.selected_item = items[i].id;
             result.item_clicked = true;
         }

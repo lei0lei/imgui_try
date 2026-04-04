@@ -4,7 +4,7 @@
 #include <string>
 
 // These define SceneTitleBarExtensionRenderer / SceneStatusBarExtensionRenderer
-#include "title_bar_extension.h"
+#include "../core/title_bar_extension.h"
 #include "status_bar_extension.h"
 
 struct EditorTab;
