@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(example_sdl3_vulkan)
 
 option(IMGUITRY_USE_VOLK "Use volk as Vulkan function loader" OFF)
-set(IMGUITRY_VOLK_SOURCE_DIR "D:/github/volk" CACHE PATH "Path to volk source directory")
+set(IMGUITRY_VOLK_SOURCE_DIR "C:/Users/lei/Documents/github/volk" CACHE PATH "Path to volk source directory")
 
 add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
 add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # SDL3 源码路径（根据你的实际路径修改）
-set(SDL3_SOURCE_DIR "D:/p90x/SDL3-3.4.0")
+set(SDL3_SOURCE_DIR "C:/Users/lei/Downloads/SDL-3.4.0")
 
 # 将 SDL3 作为子项目编译
 if(EXISTS "${SDL3_SOURCE_DIR}/CMakeLists.txt")
@@ -57,7 +57,7 @@ set(IMGUI_SOURCES
 )
 
 # Lua 源码路径（根据你的实际路径修改）
-set(LUA_SOURCE_DIR "D:/p90x/lua-5.5.0.tar/lua-5.5.0")
+set(LUA_SOURCE_DIR "C:/Users/lei/Downloads/lua-5.5.0.tar/lua-5.5.0")
 
 # 将 Lua 作为子项目编译
 if(EXISTS "${LUA_SOURCE_DIR}/CMakeLists.txt")
@@ -130,7 +130,7 @@ add_custom_command(TARGET example_sdl3_vulkan POST_BUILD
 
 # 生成 Doxygen 文档
 # 设置 Doxygen 可执行文件路径（如果不在 PATH 中）
-set(DOXYGEN_EXECUTABLE "D:/doxygen/bin/doxygen.exe")
+set(DOXYGEN_EXECUTABLE "C:/Program Files/doxygen/bin/doxygen.exe" CACHE FILEPATH "Path to Doxygen executable")
 
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
