@@ -6,6 +6,7 @@
  */
 
 #include "view_registry_defaults_config.h"
+#include "folder_dialog.h"
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
 #include "../scenes/scene_plugin_registry.h"
@@ -50,6 +51,14 @@ constexpr int kSearchMaxFiles = 1200;
 constexpr int kSearchMaxLinesPerFile = 5000;
 constexpr std::uintmax_t kSearchMaxFileBytes = 1024 * 1024;
 constexpr double kSearchDebounceSeconds = 0.35;
+
+// Training sidebar: paginated subfolder list + configurable project path
+std::string g_training_selected_data_path;
+char g_training_project_path_buf[2048] = {};
+int g_training_data_page = 0;
+constexpr int kTrainingFoldersPerPage = 10;
+std::string g_training_cached_root;
+std::vector<std::string> g_training_subdirs_sorted;
 }
 
 void RequestCreateSceneTab(const std::string& plugin_id)
@@ -72,6 +81,7 @@ bool ConsumeCreateSceneTabRequest(std::string& plugin_id)
 void SetExplorerRootPath(const std::string& root_path)
 {
     g_explorer_root_path = root_path;
+    g_training_cached_root.clear();
 }
 
 const std::string& GetExplorerRootPath()
@@ -577,6 +587,114 @@ void RenderEditor(ImVec2, ImVec2, EditorTab* active_tab)
     }
 }
 
+void RefreshTrainingSubdirList(const std::string& project_root)
+{
+    if (project_root == g_training_cached_root && !g_training_subdirs_sorted.empty()) {
+        return;
+    }
+    g_training_cached_root = project_root;
+    g_training_subdirs_sorted.clear();
+    g_training_data_page = 0;
+    if (project_root.empty()) {
+        return;
+    }
+    std::error_code ec;
+    if (!std::filesystem::exists(project_root, ec) || ec) {
+        return;
+    }
+    for (const auto& entry : std::filesystem::directory_iterator(project_root, ec)) {
+        if (ec) {
+            break;
+        }
+        if (entry.is_directory()) {
+            g_training_subdirs_sorted.push_back(entry.path().string());
+        }
+    }
+    std::sort(g_training_subdirs_sorted.begin(), g_training_subdirs_sorted.end(), [](const std::string& a, const std::string& b) {
+        return std::filesystem::path(a).filename().string() < std::filesystem::path(b).filename().string();
+    });
+}
+
+void RenderTraining(ImVec2, ImVec2, EditorTab*)
+{
+    const auto& colors = GetWorkbenchTheme().colors;
+    DrawPlaceholderHeader("TRAINING", colors.primary_sidebar_text_dim);
+
+    const std::string& project_root = GetExplorerRootPath();
+    RefreshTrainingSubdirList(project_root);
+
+    if (ImGui::CollapsingHeader("Training data", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (project_root.empty()) {
+            ImGui::TextColored(colors.primary_sidebar_text_dim, "Open a project (File -> Open Project) first.");
+        } else {
+            ImGui::TextColored(colors.primary_sidebar_text_dim, "Project root:");
+            ImGui::TextWrapped("%s", project_root.c_str());
+
+            const int n = static_cast<int>(g_training_subdirs_sorted.size());
+            const int ipp = kTrainingFoldersPerPage;
+            const int total_pages = (n == 0) ? 1 : (n + ipp - 1) / ipp;
+            if (g_training_data_page >= total_pages) {
+                g_training_data_page = total_pages - 1;
+            }
+            if (g_training_data_page < 0) {
+                g_training_data_page = 0;
+            }
+
+            ImGui::Text("Subfolders: %d   Page %d / %d", n, g_training_data_page + 1, total_pages);
+            ImGui::BeginDisabled(n == 0);
+            if (ImGui::SmallButton("Prev##training_page") && g_training_data_page > 0) {
+                --g_training_data_page;
+            }
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Next##training_page") && g_training_data_page < total_pages - 1) {
+                ++g_training_data_page;
+            }
+            ImGui::EndDisabled();
+
+            const float line_h = ImGui::GetTextLineHeightWithSpacing();
+            const float list_h = line_h * static_cast<float>(ipp) + ImGui::GetStyle().FramePadding.y * 2.0f;
+            ImGui::BeginChild("training_data_folder_list", ImVec2(0.0f, list_h), ImGuiChildFlags_Borders);
+            if (n == 0) {
+                ImGui::TextColored(colors.primary_sidebar_text_dim, "No subfolders in the project root.");
+            } else {
+                const int start = g_training_data_page * ipp;
+                const int end = std::min(n, start + ipp);
+                for (int i = start; i < end; ++i) {
+                    const std::string& full = g_training_subdirs_sorted[static_cast<size_t>(i)];
+                    const std::string name = std::filesystem::path(full).filename().string();
+                    ImGui::PushID(i);
+                    const bool sel = (g_training_selected_data_path == full);
+                    if (ImGui::Selectable(name.c_str(), sel)) {
+                        g_training_selected_data_path = full;
+                    }
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s", full.c_str());
+                    }
+                    ImGui::PopID();
+                }
+            }
+            ImGui::EndChild();
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Training config", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (g_training_project_path_buf[0] == '\0' && !project_root.empty()) {
+            std::snprintf(g_training_project_path_buf, sizeof(g_training_project_path_buf), "%s", project_root.c_str());
+        }
+        ImGui::TextUnformatted("Project");
+        ImGui::SetNextItemWidth(-100.0f);
+        ImGui::InputText("##training_project_path", g_training_project_path_buf, sizeof(g_training_project_path_buf));
+        ImGui::SameLine();
+        if (ImGui::Button("Browse##training_proj")) {
+            const std::string picked = UI::PickFolderPathFromDialog();
+            if (!picked.empty()) {
+                std::snprintf(g_training_project_path_buf, sizeof(g_training_project_path_buf), "%s", picked.c_str());
+            }
+        }
+        ImGui::TextColored(colors.primary_sidebar_text_dim, "Browse opens a folder dialog; you can also edit the path directly.");
+    }
+}
+
 void RenderExtensions(ImVec2, ImVec2, EditorTab*)
 {
     const auto& colors = GetWorkbenchTheme().colors;
@@ -607,12 +725,14 @@ void EnsureDefaultPlugins()
     global_primary_plugin.primary_views.push_back({ "debug", "Debug", RenderDebug });
     global_primary_plugin.primary_views.push_back({ "editor", "Editor", RenderEditor });
     global_primary_plugin.primary_views.push_back({ "extensions", "Extensions", RenderExtensions });
+    global_primary_plugin.primary_views.push_back({ "training", "Training", RenderTraining });
     global_primary_plugin.primary_bindings = {
         { ActivityBarItem::Explorer, "explorer" },
         { ActivityBarItem::Search, "search" },
         { ActivityBarItem::Debug, "debug" },
         { ActivityBarItem::Editor, "editor" },
-        { ActivityBarItem::Extensions, "extensions" }
+        { ActivityBarItem::Extensions, "extensions" },
+        { ActivityBarItem::Training, "training" }
     };
     plugins.push_back(std::move(global_primary_plugin));
 
@@ -728,6 +848,16 @@ ViewDefinition GetDefaultPrimaryViewForPlugin(const std::string& plugin_id, Acti
         return { "empty", "Empty", nullptr };
     }
     return { view->id, view->title, view->renderer };
+}
+
+std::string GetTrainingSelectedDataFolderPath()
+{
+    return g_training_selected_data_path;
+}
+
+std::string GetTrainingConfigProjectPath()
+{
+    return std::string(g_training_project_path_buf);
 }
 
 } // namespace UI

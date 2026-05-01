@@ -10,12 +10,8 @@
 #include "../services/editor_area_service.h"
 #include "../ui/view_registry_defaults.h"
 #include "../ui/view_registry_defaults_config.h"
+#include "../ui/folder_dialog.h"
 #include "../scenes/scene_plugin_registry.h"
-
-#ifdef _WIN32
-#include <windows.h>
-#include <shlobj.h>
-#endif
 
 namespace {
 
@@ -60,26 +56,6 @@ EditorTab MakeDefaultSceneTab(const IEditorAreaService& editor_area)
     return tab;
 }
 
-std::string PickFolderPathFromDialog()
-{
-#ifdef _WIN32
-    BROWSEINFOA bi{};
-    bi.lpszTitle = "Select Folder";
-    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
-    LPITEMIDLIST pidl = SHBrowseForFolderA(&bi);
-    if (!pidl) {
-        return {};
-    }
-
-    char selected_path[MAX_PATH] = {};
-    const bool ok = SHGetPathFromIDListA(pidl, selected_path) == TRUE;
-    CoTaskMemFree(pidl);
-    return ok ? std::string(selected_path) : std::string();
-#else
-    return {};
-#endif
-}
-
 }
 
 void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
@@ -97,7 +73,7 @@ void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
 	});
 
     service.Register(CommandId::FileOpenFolder, [ctx]() mutable {
-        const std::string folder = PickFolderPathFromDialog();
+        const std::string folder = UI::PickFolderPathFromDialog();
         if (folder.empty()) {
             ctx.notification.SetMessage("Open Folder canceled");
             return;
@@ -107,7 +83,7 @@ void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
     });
 
     service.Register(CommandId::FileOpenProject, [ctx]() mutable {
-        const std::string folder = PickFolderPathFromDialog();
+        const std::string folder = UI::PickFolderPathFromDialog();
         if (folder.empty()) {
             ctx.notification.SetMessage("Open Project canceled");
             return;

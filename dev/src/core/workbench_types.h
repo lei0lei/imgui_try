@@ -8,7 +8,8 @@ enum class ActivityBarItem {
     Search,
     Debug,
     Editor,
-    Extensions
+    Extensions,
+    Training
 };
 
 enum class TitleBarMenu {

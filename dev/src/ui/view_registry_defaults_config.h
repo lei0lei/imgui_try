@@ -33,4 +33,8 @@ bool ConsumeCreateSceneTabRequest(std::string& plugin_id);
 void SetExplorerRootPath(const std::string& root_path);
 const std::string& GetExplorerRootPath();
 
+// Training panel (sidebar "Training" activity): selected dataset folder + configured project path
+std::string GetTrainingSelectedDataFolderPath();
+std::string GetTrainingConfigProjectPath();
+
 } // namespace UI

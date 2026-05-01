@@ -24,6 +24,7 @@ const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
         case ActivityBarItem::Debug: return "debug";
         case ActivityBarItem::Editor: return "editor";
         case ActivityBarItem::Extensions: return "extensions";
+        case ActivityBarItem::Training: return "training";
         default: return nullptr;
     }
 }
