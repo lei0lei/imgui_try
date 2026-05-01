@@ -24,7 +24,9 @@ typedef struct VkAllocationCallbacks VkAllocationCallbacks;
 
 class Workbench {
 public:
+    static ServiceOverrides BuildDefaultServiceOverrides();
     Workbench(SDL_Window* window);
+    Workbench(SDL_Window* window, const ServiceOverrides& service_overrides);
     bool InitializeIconSystem(
         VkPhysicalDevice physical_device,
         VkDevice device,

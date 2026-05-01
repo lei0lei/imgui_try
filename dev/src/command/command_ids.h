@@ -4,10 +4,9 @@
 enum class CommandId {
     None = 0,
     FileNew,
-    FileNew2D,
-    FileNew3D,
-    FileNewNodeGraph,
     FileOpen,
+    FileOpenFolder,
+    FileOpenProject,
     FileSave,
     FileExit,
     EditUndo,

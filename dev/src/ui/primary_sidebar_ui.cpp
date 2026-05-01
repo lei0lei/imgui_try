@@ -9,12 +9,7 @@
 #include "imgui.h"
 #include "../workbench/workbench_config.h"
 
-PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
-                                          float title_h,
-                                          float status_bar_h,
-                                          float width,
-                                          const PrimarySidebarViewModel& view_model,
-                                          EditorTab* active_tab)
+PrimarySidebarResult DrawPrimarySidebarUI(const PrimarySidebarProps& props, EditorTab* active_tab)
 {
     PrimarySidebarResult result{};
     ImGuiIO& io = ImGui::GetIO();
@@ -23,13 +18,13 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
     const WorkbenchThemeSizes& sizes = theme.sizes;
 
     ImVec4 bg_color = colors.primary_sidebar_bg;
-    float sidebar_x = activity_bar_w;
-    float sidebar_start_y = title_h;
-    float sidebar_end_y = io.DisplaySize.y - status_bar_h;
+    float sidebar_x = props.activity_bar_w;
+    float sidebar_start_y = props.title_h;
+    float sidebar_end_y = io.DisplaySize.y - props.status_bar_h;
     ImDrawList* bg = ImGui::GetBackgroundDrawList();
-    bg->AddRectFilled(ImVec2(sidebar_x, sidebar_start_y), ImVec2(sidebar_x + width, sidebar_end_y), ImGui::GetColorU32(bg_color));
+    bg->AddRectFilled(ImVec2(sidebar_x, sidebar_start_y), ImVec2(sidebar_x + props.width, sidebar_end_y), ImGui::GetColorU32(bg_color));
     ImGui::SetNextWindowPos(ImVec2(sidebar_x, sidebar_start_y));
-    ImGui::SetNextWindowSize(ImVec2(width, sidebar_end_y - sidebar_start_y));
+    ImGui::SetNextWindowSize(ImVec2(props.width, sidebar_end_y - sidebar_start_y));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(sizes.sidebar_padding_x, sizes.sidebar_padding_y));
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
@@ -39,13 +34,13 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
                               ImGuiWindowFlags_NoBringToFrontOnFocus;
     ImGui::Begin("PrimarySidebar", nullptr, flags);
     const ViewDefinition* view_to_render = nullptr;
-    if (view_model.active_view && view_model.active_view->renderer) {
-        view_to_render = view_model.active_view;
-    } else if (view_model.fallback_view && view_model.fallback_view->renderer) {
-        view_to_render = &(*view_model.fallback_view);
+    if (props.active_view && props.active_view->renderer) {
+        view_to_render = props.active_view;
+    } else if (props.fallback_view && props.fallback_view->renderer) {
+        view_to_render = &(*props.fallback_view);
     }
 
-    if (!view_to_render->renderer) {
+    if (!view_to_render || !view_to_render->renderer) {
         ImGui::TextColored(colors.primary_sidebar_text_dim, "NO VIEW");
         ImGui::Separator();
         ImGui::Text("No primary sidebar view for this activity.");
@@ -58,7 +53,6 @@ PrimarySidebarResult DrawPrimarySidebarUI(float activity_bar_w,
     ImGui::End();
     ImGui::PopStyleVar(3);
     ImDrawList* _bg = ImGui::GetBackgroundDrawList();
-    _bg->AddLine(ImVec2(sidebar_x + width - sizes.sidebar_border_thickness, sidebar_start_y), ImVec2(sidebar_x + width - sizes.sidebar_border_thickness, sidebar_end_y), ImGui::GetColorU32(colors.primary_sidebar_border), sizes.sidebar_border_thickness);
-    result.is_visible = view_model.is_visible;
+    _bg->AddLine(ImVec2(sidebar_x + props.width - sizes.sidebar_border_thickness, sidebar_start_y), ImVec2(sidebar_x + props.width - sizes.sidebar_border_thickness, sidebar_end_y), ImGui::GetColorU32(colors.primary_sidebar_border), sizes.sidebar_border_thickness);
     return result;
 }

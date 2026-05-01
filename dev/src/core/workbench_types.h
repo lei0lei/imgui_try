@@ -6,10 +6,10 @@ enum class ActivityBarItem {
     None = 0,
     Explorer,
     Search,
-    NodeEditor,
     Debug,
     Editor,
-    Extensions
+    Extensions,
+    Training
 };
 
 enum class TitleBarMenu {

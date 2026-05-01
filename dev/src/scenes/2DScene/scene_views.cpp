@@ -2,7 +2,11 @@
 #include "scene_theme.h"
 
 #include "../scene_plugin_registry.h"
-#include "../../workbench/workbench_config.h"
+#include "../scene_layout.h"
+#include "../scene_state.h"
+#include "../../command/command_ids.h"
+#include "../../core/workbench_theme.h"
+#include "../../ui/title_bar_extension_widgets.h"
 
 #include <cmath>
 
@@ -36,34 +40,206 @@ bool DrawSceneTabButton(const char* label, bool active, const WorkbenchThemeColo
 
 namespace {
 const bool kRegistered2DRenderer = []() {
-    Scenes::ScenePluginRegistry::RegisterRenderer("scene.2d", [](ImVec2 content_min, ImVec2 content_max, EditorTab& tab) {
-        Scenes::Scene2DViews::RenderCanvas(content_min, content_max, tab);
+    Scenes::ScenePluginRegistry::RegisterRenderer("scene.2d", [](const SceneContext& ctx, EditorTab& tab) {
+        Scenes::Scene2DViews::RenderCanvas(ctx, tab);
+    });
+    return true;
+}();
+
+const bool kRegistered2DTitleBarExtension = []() {
+    Scenes::ScenePluginRegistry::RegisterTitleBarExtension("scene.2d", [](const TitleBarExtensionContext& ctx) {
+        if (ctx.region != TitleBarExtensionRegion::Right || !ctx.active_tab) {
+            return;
+        }
+
+        auto& tab = *ctx.active_tab;
+        const bool secondary_visible = SceneState::GetOrInit(tab, "scene.layout.secondary.visible", "true") == "true";
+        const bool panel_visible = SceneState::GetOrInit(tab, "scene.layout.panel.visible", "true") == "true";
+
+        ImGui::PushID(static_cast<int>(tab.id));
+        const float btn_w = GetWorkbenchTheme().sizes.title_layout_btn_w;
+        const float btn_h = ctx.title_h;
+
+        if (DrawTitleBarIconButton("secondary", btn_w, btn_h, secondary_visible, [&](ImDrawList* draw_list, ImVec2 c, float half, ImU32 col) {
+            draw_list->AddRect(ImVec2(c.x - half, c.y - (half - 1.0f)), ImVec2(c.x + half, c.y + (half - 1.0f)), col, 2.0f, 0, 1.5f);
+            if (secondary_visible) {
+                draw_list->AddRectFilled(ImVec2(c.x + (half * 0.25f), c.y - (half - 2.0f)), ImVec2(c.x + (half - 1.0f), c.y + (half - 2.0f)), col);
+            } else {
+                draw_list->AddRect(ImVec2(c.x + (half * 0.25f), c.y - (half - 1.0f)), ImVec2(c.x + half, c.y + (half - 1.0f)), col, 2.0f, 0, 1.0f);
+            }
+        })) {
+            if (ctx.trigger_scene_action) {
+                ctx.trigger_scene_action("scene.toggle.secondary");
+            }
+        }
+        ImGui::SameLine(0.0f, 0.0f);
+        if (DrawTitleBarIconButton("panel", btn_w, btn_h, panel_visible, [&](ImDrawList* draw_list, ImVec2 c, float half, ImU32 col) {
+            draw_list->AddRect(ImVec2(c.x - half, c.y - (half - 1.0f)), ImVec2(c.x + half, c.y + (half - 1.0f)), col, 2.0f, 0, 1.5f);
+            if (panel_visible) {
+                draw_list->AddRectFilled(ImVec2(c.x - (half - 1.0f), c.y + (half * 0.15f)), ImVec2(c.x + (half - 1.0f), c.y + (half - 1.0f)), col);
+            } else {
+                draw_list->AddRect(ImVec2(c.x - (half - 1.0f), c.y + (half * 0.15f)), ImVec2(c.x + (half - 1.0f), c.y + (half - 1.0f)), col, 2.0f, 0, 1.0f);
+            }
+        })) {
+            if (ctx.trigger_scene_action) {
+                ctx.trigger_scene_action("scene.toggle.panel");
+            }
+        }
+        ImGui::PopID();
+    });
+    return true;
+}();
+
+const bool kRegistered2DStatusBarExtension = []() {
+    Scenes::ScenePluginRegistry::RegisterStatusBarExtension("scene.2d", [](const StatusBarExtensionContext& ctx) {
+        if (ctx.region != StatusBarExtensionRegion::Right || !ctx.active_tab) {
+            return;
+        }
+
+        const auto& colors = GetWorkbenchTheme().colors;
+        const bool secondary_visible = SceneState::GetOrInit(*ctx.active_tab, "scene.layout.secondary.visible", "true") == "true";
+        const bool panel_visible = SceneState::GetOrInit(*ctx.active_tab, "scene.layout.panel.visible", "true") == "true";
+
+        auto draw_chip = [&](const char* label) {
+            const ImVec2 text_size = ImGui::CalcTextSize(label);
+            const float chip_h = ctx.status_bar_h - 2.0f;
+            const ImVec2 chip_pos = ImGui::GetCursorScreenPos();
+            const ImVec2 chip_size(text_size.x + 16.0f, chip_h);
+            const ImVec2 chip_max(chip_pos.x + chip_size.x, chip_pos.y + chip_size.y);
+            const bool hovered = ImGui::IsMouseHoveringRect(chip_pos, chip_max, true);
+            const float hover_darkening = hovered ? 0.82f : 1.0f;
+            const ImVec4 bg(
+                colors.status_bar_bg.x * hover_darkening,
+                colors.status_bar_bg.y * hover_darkening,
+                colors.status_bar_bg.z * hover_darkening,
+                colors.status_bar_bg.w);
+
+            ImDrawList* draw_list = ImGui::GetWindowDrawList();
+            draw_list->AddRectFilled(chip_pos, chip_max, ImGui::GetColorU32(bg), 0.0f);
+            const ImVec2 text_pos(chip_pos.x + 8.0f, chip_pos.y + (chip_h - text_size.y) * 0.5f);
+            draw_list->AddText(text_pos, ImGui::GetColorU32(colors.status_bar_text), label);
+            ImGui::Dummy(chip_size);
+        };
+
+        draw_chip("2D");
+        ImGui::SameLine();
+        draw_chip(secondary_visible ? "Secondary:On" : "Secondary:Off");
+        ImGui::SameLine();
+        draw_chip(panel_visible ? "Panel:On" : "Panel:Off");
+    });
+    return true;
+}();
+
+const bool kRegistered2DTitleBarActions = []() {
+    Scenes::ScenePluginRegistry::RegisterTitleBarActionHandler("scene.2d", [](EditorTab& tab, const std::string& action_id) {
+        if (action_id == "scene.toggle.secondary") {
+            std::string& raw = SceneState::GetOrInit(tab, "scene.layout.secondary.visible", "true");
+            raw = (raw == "true") ? "false" : "true";
+            return;
+        }
+        if (action_id == "scene.toggle.panel") {
+            std::string& raw = SceneState::GetOrInit(tab, "scene.layout.panel.visible", "true");
+            raw = (raw == "true") ? "false" : "true";
+            return;
+        }
+    });
+    return true;
+}();
+
+const bool kRegistered2DTitleBarExtensionWidth = []() {
+    Scenes::ScenePluginRegistry::RegisterTitleBarExtensionWidthResolver("scene.2d", [](float title_h, const EditorTab*) {
+        (void)title_h;
+        const float btn_w = GetWorkbenchTheme().sizes.title_layout_btn_w;
+        return btn_w * 2.0f;
+    });
+    return true;
+}();
+
+const bool kRegistered2DPrimarySidebarDebugProvider = []() {
+    Scenes::ScenePluginRegistry::RegisterPrimarySidebarDebugDataProvider("scene.2d", [](const EditorTab* active_tab) {
+        Scenes::ScenePrimarySidebarDebugData data;
+        if (!active_tab || active_tab->scene_plugin_id != "scene.2d") {
+            return data;
+        }
+
+        const auto read_flag = [&](const char* key) {
+            const auto it = active_tab->scene_ui_state.find(key);
+            return it == active_tab->scene_ui_state.end() ? true : (it->second == "true");
+        };
+
+        const bool secondary_visible = read_flag("scene.layout.secondary.visible");
+        const bool panel_visible = read_flag("scene.layout.panel.visible");
+
+        data.variables.push_back({ "scene", active_tab->scene_plugin_id });
+        data.variables.push_back({ "tab", active_tab->name });
+        data.variables.push_back({ "secondaryVisible", secondary_visible ? "true" : "false" });
+        data.variables.push_back({ "panelVisible", panel_visible ? "true" : "false" });
+
+        std::vector<std::string> watch_exprs;
+        const auto watch_it = active_tab->scene_ui_state.find("debug.watch.list");
+        if (watch_it != active_tab->scene_ui_state.end() && !watch_it->second.empty()) {
+            const std::string& raw = watch_it->second;
+            size_t start = 0;
+            while (start <= raw.size()) {
+                const size_t sep = raw.find(';', start);
+                const size_t end = (sep == std::string::npos) ? raw.size() : sep;
+                std::string expr = raw.substr(start, end - start);
+                if (!expr.empty()) {
+                    watch_exprs.push_back(std::move(expr));
+                }
+                if (sep == std::string::npos) {
+                    break;
+                }
+                start = sep + 1;
+            }
+        }
+        if (watch_exprs.empty()) {
+            watch_exprs = { "rect.rotation", "circle.bounce", "wave.points" };
+        }
+
+        for (const std::string& expr : watch_exprs) {
+            std::string value = "<unknown>";
+            if (expr == "rect.rotation") value = "time * 0.5";
+            else if (expr == "circle.bounce") value = "sin(time * 2.0)";
+            else if (expr == "wave.points") value = "100";
+            else if (expr == "secondary.visible") value = secondary_visible ? "true" : "false";
+            else if (expr == "panel.visible") value = panel_visible ? "true" : "false";
+            data.watches.push_back({ expr, value });
+        }
+
+        data.callstack.push_back({ "Scene2DViews::RenderCanvas", active_tab->name, true });
+        data.callstack.push_back({ "EditorArea::DrawEditorContent", "workbench editor", false });
+        data.callstack.push_back({ "WorkbenchRenderer::RenderEditorArea", "workbench", false });
+        return data;
     });
     return true;
 }();
 }
 
-void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
+void RenderCanvas(const SceneContext& ctx, EditorTab& tab)
 {
     (void)kRegistered2DRenderer;
-    const WorkbenchThemeColors& wb_colors = GetWorkbenchTheme().colors;
+    ImVec2 content_min = ctx.content_min;
+    ImVec2 content_max = ctx.content_max;
+    const WorkbenchThemeColors& wb_colors = ctx.theme.colors;
     const Scene2DTheme::Theme& scene_theme = Scene2DTheme::Get();
     const Scene2DTheme::Colors& scene_colors = scene_theme.colors;
     const Scene2DTheme::Sizes& scene_sizes = scene_theme.sizes;
 
-    const ImVec2 full_max = content_max;
-    bool show_secondary = true;
-    bool show_panel = true;
     const float secondary_w = 300.0f;
     const float panel_h = 180.0f;
-    if ((content_max.x - content_min.x) < 640.0f) {
-        show_secondary = false;
+    const SceneCanvasLayout layout = ComputeCanvasLayout(ctx, 640.0f, 420.0f, secondary_w, panel_h);
+    const ImVec2 full_max = layout.full_max;
+    const bool secondary_visible = SceneState::GetOrInit(tab, "scene.layout.secondary.visible", "true") == "true";
+    const bool panel_visible = SceneState::GetOrInit(tab, "scene.layout.panel.visible", "true") == "true";
+    ImVec2 effective_canvas_max = layout.canvas_max;
+    if (layout.show_secondary && !secondary_visible) {
+        effective_canvas_max.x += secondary_w;
     }
-    if ((content_max.y - content_min.y) < 420.0f) {
-        show_panel = false;
+    if (layout.show_panel && !panel_visible) {
+        effective_canvas_max.y += panel_h;
     }
-    content_max.x -= show_secondary ? secondary_w : 0.0f;
-    content_max.y -= show_panel ? panel_h : 0.0f;
+    content_max = effective_canvas_max;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
@@ -126,16 +302,15 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
     ImVec2 hint_pos = ImVec2(content_min.x + padding, content_min.y + padding + 25);
     draw_list->AddText(hint_pos, ImGui::GetColorU32(scene_colors.hint), "2D graphics scene with animations");
 
-    if (show_secondary) {
-        std::string& secondary_view = tab.scene_ui_state["scene2d.secondary.active_view"];
-        if (secondary_view.empty()) {
-            secondary_view = "outline";
-        }
-        ImGui::SetCursorScreenPos(ImVec2(content_max.x, content_min.y));
+    if (layout.show_secondary && secondary_visible) {
+        std::string& secondary_view = SceneState::GetOrInit(tab, "scene2d.secondary.active_view", "outline");
+        const float tab_bar_h = GetWorkbenchTheme().sizes.editor_tab_bar_height;
+        const float secondary_top_y = content_min.y - tab_bar_h;
+        ImGui::SetCursorScreenPos(ImVec2(content_max.x, secondary_top_y));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.secondary_sidebar_bg);
         ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.secondary_sidebar_border);
         ImGui::PushStyleColor(ImGuiCol_Text, wb_colors.secondary_sidebar_text);
-        ImGui::BeginChild("scene2d_secondary", ImVec2(full_max.x - content_max.x, full_max.y - content_min.y), true);
+        ImGui::BeginChild("scene2d_secondary", ImVec2(full_max.x - content_max.x, full_max.y - secondary_top_y), true);
         if (DrawSceneTabButton("Outline", secondary_view == "outline", wb_colors)) {
             secondary_view = "outline";
         }
@@ -153,11 +328,8 @@ void RenderCanvas(ImVec2 content_min, ImVec2 content_max, EditorTab& tab)
         ImGui::PopStyleColor(3);
     }
 
-    if (show_panel) {
-        std::string& panel_view = tab.scene_ui_state["scene2d.panel.active_view"];
-        if (panel_view.empty()) {
-            panel_view = "output";
-        }
+    if (layout.show_panel && panel_visible) {
+        std::string& panel_view = SceneState::GetOrInit(tab, "scene2d.panel.active_view", "output");
         ImGui::SetCursorScreenPos(ImVec2(content_min.x, content_max.y));
         ImGui::PushStyleColor(ImGuiCol_ChildBg, wb_colors.panel_bg);
         ImGui::PushStyleColor(ImGuiCol_Border, wb_colors.panel_border);

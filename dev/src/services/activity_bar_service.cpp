@@ -18,6 +18,7 @@ bool IsSelectableActivityItem(int index)
         case ActivityBarItem::Debug:
         case ActivityBarItem::Editor:
         case ActivityBarItem::Extensions:
+        case ActivityBarItem::Training:
             return true;
         default:
             return false;
@@ -29,7 +30,7 @@ bool IsSelectableActivityItem(int index)
 ActivityBarService::ActivityBarService()
     : selected_item_(1) // 1 = Explorer
 {
-    items_ = { "Explorer", "Search", "Debug", "Editor", "Extensions" };
+    items_ = { "Explorer", "Search", "Debug", "Editor", "Extensions", "Training" };
 }
 
 int ActivityBarService::GetSelectedItem() const {
@@ -37,10 +38,6 @@ int ActivityBarService::GetSelectedItem() const {
 }
 
 void ActivityBarService::SetSelectedItem(int index) {
-    if (index == static_cast<int>(ActivityBarItem::NodeEditor)) {
-        selected_item_ = static_cast<int>(ActivityBarItem::Explorer);
-        return;
-    }
     if (IsSelectableActivityItem(index))
         selected_item_ = index;
 }

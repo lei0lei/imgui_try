@@ -3,11 +3,12 @@
  #include <memory>
 #include "../../services/service_interfaces.h"
 #include "../../services/editor_area_service.h"
+#include "../../services/event_bus.h"
  #include "../../ui/editor_area_ui.h"
 
  class EditorAreaPart {
  public:
-	explicit EditorAreaPart(IEditorAreaService& service);
+	EditorAreaPart(IEditorAreaService& service, IEventBus& event_bus);
 
 	 void Render(
 		 float left_offset,
@@ -22,5 +23,6 @@
 
  private:
 	IEditorAreaService& service_;
+	IEventBus& event_bus_;
 	 std::unique_ptr<UI::EditorArea> ui_;
  };

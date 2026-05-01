@@ -13,7 +13,7 @@ namespace UI {
 void RegisterDefaultViews(IViewRegistry& registry)
 {
     for (const auto& entry : GetDefaultViewConfigs()) {
-        registry.RegisterView(entry.plugin_id, entry.container, { entry.id, entry.title, entry.renderer });
+        registry.RegisterView(entry.plugin_id, { entry.id, entry.title, entry.renderer });
     }
 }
 

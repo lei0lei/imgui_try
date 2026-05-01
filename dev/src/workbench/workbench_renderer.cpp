@@ -6,6 +6,7 @@
  */
 
 #include "workbench_renderer.h"
+#include "scene_extension_resolver.h"
 #include "../ui/view_registry_defaults.h"
 #include "../ui/view_registry_defaults_config.h"
 #include "../scenes/scene_plugin_registry.h"
@@ -23,6 +24,7 @@ const char* PrimarySidebarViewIdForItem(ActivityBarItem item)
         case ActivityBarItem::Debug: return "debug";
         case ActivityBarItem::Editor: return "editor";
         case ActivityBarItem::Extensions: return "extensions";
+        case ActivityBarItem::Training: return "training";
         default: return nullptr;
     }
 }
@@ -88,7 +90,7 @@ void WorkbenchRenderer::RenderPrimarySidebar(const WorkbenchMetrics& metrics)
     RenderPrimarySidebar(metrics.activity_bar_w, metrics.title_h, metrics.status_bar_h, metrics.primary_sidebar_w);
 }
 
-void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
+void WorkbenchRenderer::HandleCreateSceneTabRequests()
 {
     ::std::string requested_plugin_id;
     ::Scenes::ScenePluginRegistry::Instance().EnsureLoaded();
@@ -107,15 +109,21 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
         }
 
         new_tab.name = descriptor->name + "-" + std::to_string(same_type_count + 1);
-
         new_tab.path = "";
         new_tab.modified = false;
         new_tab.active = true;
         new_tab.scene_plugin_id = requested_plugin_id;
         services_.GetEditorAreaService().AddTab(new_tab);
     }
+}
 
-    const int active_tab_index_before = services_.GetEditorAreaService().GetActiveTabIndex();
+void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const LayoutInfo& layout)
+{
+    // Dispatch queued cross-scene events once per frame.
+    services_.GetEventBus().Dispatch();
+
+    HandleCreateSceneTabRequests();
+
     bool block_tab_clicks = services_.GetTitleBarService().GetActiveMenu() != TitleBarMenu::None;
     block_tab_clicks = block_tab_clicks || services_.GetTitleBarService().ConsumeBlockTabClicksOnce();
     RenderEditorArea(
@@ -125,19 +133,6 @@ void WorkbenchRenderer::RenderEditorArea(const WorkbenchMetrics& metrics, const 
         metrics.status_bar_h,
         block_tab_clicks
     );
-
-    const int active_tab_index_after = services_.GetEditorAreaService().GetActiveTabIndex();
-    if (active_tab_index_after != active_tab_index_before) {
-        const LayoutInfo updated_layout = ComputeLayout(metrics);
-
-        RenderEditorArea(
-            updated_layout.left_offset,
-            updated_layout.right_offset,
-            metrics.title_h,
-            metrics.status_bar_h,
-            true
-        );
-    }
 }
 
 void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, float activity_bar_w)
@@ -147,7 +142,7 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
         const std::string& primary_plugin_id = UI::GetPrimarySidebarGlobalPluginId();
         const ViewDefinition def = UI::GetDefaultPrimaryViewForPlugin(primary_plugin_id, result.selected_item);
         if (def.renderer) {
-            services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, ViewContainer::PrimarySidebar, def.id);
+            services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, def.id);
         }
         if (services_.GetLayoutService().IsPrimarySidebarVisible() && result.selected_item == last_activity_item_) {
             services_.GetLayoutService().SetPrimarySidebarVisible(false);
@@ -160,34 +155,53 @@ void WorkbenchRenderer::RenderActivityBar(float title_h, float status_bar_h, flo
     }
 }
 
+void WorkbenchRenderer::SyncPrimarySidebarViewSelection(const std::string& primary_plugin_id, ActivityBarItem active_item)
+{
+    const bool selection_changed = !has_primary_view_selection_
+        || last_primary_view_item_ != active_item
+        || last_primary_view_plugin_id_ != primary_plugin_id;
+    if (!selection_changed) {
+        return;
+    }
+
+    if (const char* view_id = PrimarySidebarViewIdForItem(active_item)) {
+        services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, view_id);
+    }
+    last_primary_view_item_ = active_item;
+    last_primary_view_plugin_id_ = primary_plugin_id;
+    has_primary_view_selection_ = true;
+}
+
 void WorkbenchRenderer::RenderPrimarySidebar(float activity_bar_w, float title_h, float status_bar_h, float primary_sidebar_w)
 {
     EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
     const std::string& primary_plugin_id = UI::GetPrimarySidebarGlobalPluginId();
     ActivityBarItem active_item = (ActivityBarItem)activity_bar_part_.GetService().GetSelectedItem();
-    const bool selection_changed = !has_primary_view_selection_
-        || last_primary_view_item_ != active_item
-        || last_primary_view_plugin_id_ != primary_plugin_id;
-    if (selection_changed) {
-        if (const char* view_id = PrimarySidebarViewIdForItem(active_item)) {
-            services_.GetViewRegistry().SetActiveViewById(primary_plugin_id, ViewContainer::PrimarySidebar, view_id);
-        }
-        last_primary_view_item_ = active_item;
-        last_primary_view_plugin_id_ = primary_plugin_id;
-        has_primary_view_selection_ = true;
-    }
+    SyncPrimarySidebarViewSelection(primary_plugin_id, active_item);
     primary_sidebar_part_.Render(activity_bar_w, title_h, status_bar_h, primary_sidebar_w, services_.GetViewRegistry(), primary_plugin_id, active_tab, active_item);
 }
 
 void WorkbenchRenderer::RenderTitleBar(SDL_Window* window, float title_h)
 {
     bool primary_visible = services_.GetLayoutService().IsPrimarySidebarVisible();
-    title_bar_part_.Render(window, title_h, primary_visible);
+    EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
+    const auto ext = WorkbenchSceneExtensionResolver::ResolveTitleBar(active_tab, title_h);
+
+    title_bar_part_.Render(window,
+        title_h,
+        primary_visible,
+        active_tab,
+        ext.extension,
+        ext.action_handler,
+        ext.extension_width);
 }
 
 void WorkbenchRenderer::RenderStatusBar(SDL_Window* window, float status_bar_h, float title_h)
 {
-    status_bar_part_.Render(window, status_bar_h, title_h);
+    EditorTab* active_tab = services_.GetEditorAreaService().GetActiveTab();
+    const auto ext = WorkbenchSceneExtensionResolver::ResolveStatusBar(active_tab);
+
+    status_bar_part_.Render(window, status_bar_h, title_h, active_tab, ext.extension, ext.action_handler);
 }
 
 void WorkbenchRenderer::RenderEditorArea(float left_offset, float right_offset, float title_h, float status_bar_h, bool block_tab_clicks)

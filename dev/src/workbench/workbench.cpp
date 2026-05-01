@@ -8,8 +8,15 @@
 #include "workbench.h"
 #include "../command/command_handlers.h"
 #include "../ui/activity_bar_ui.h"
+#include "../scenes/scene_plugin_registry.h"
 #include <vector>
 #include <cstdio>
+
+
+ServiceOverrides Workbench::BuildDefaultServiceOverrides()
+{
+    return ServiceOverrides{};
+}
 
 bool Workbench::InitializeIconSystem(
     VkPhysicalDevice physical_device,
@@ -109,13 +116,18 @@ void Workbench::UpdateFrameStats(float fps)
  * 初始化所有UI部件、服务和渲染器，设置默认状态。
  */
 Workbench::Workbench(SDL_Window* window)
+        : Workbench(window, ServiceOverrides{})
+{
+}
+
+Workbench::Workbench(SDL_Window* window, const ServiceOverrides& service_overrides)
         : window_(window),
-          services_(),
+                    services_(service_overrides),
           title_bar_part_(services_.GetTitleBarService()),
           status_bar_part_(services_.GetNotificationService()),
           activity_bar_part_(services_.GetActivityBarService()),
           primary_sidebar_part_(services_.GetPrimarySidebarService()),
-          editor_area_part_(services_.GetEditorAreaService()),
+          editor_area_part_(services_.GetEditorAreaService(), services_.GetEventBus()),
           command_controller_(
                 command_service_,
                 services_.GetTitleBarService(),

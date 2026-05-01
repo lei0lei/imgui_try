@@ -9,6 +9,8 @@
 #include "imgui.h"
 #include "../services/editor_area_service.h"
 #include "../ui/view_registry_defaults.h"
+#include "../ui/view_registry_defaults_config.h"
+#include "../ui/folder_dialog.h"
 #include "../scenes/scene_plugin_registry.h"
 
 namespace {
@@ -58,22 +60,7 @@ EditorTab MakeDefaultSceneTab(const IEditorAreaService& editor_area)
 
 void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
 {
-	service.Register(CommandId::FileNew2D, [ctx]() mutable {
-		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
-		ctx.editor_area.AddTab(new_tab);
-	});
-
 	service.Register(CommandId::FileNew, [ctx]() mutable {
-		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
-		ctx.editor_area.AddTab(new_tab);
-	});
-
-	service.Register(CommandId::FileNew3D, [ctx]() mutable {
-		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
-		ctx.editor_area.AddTab(new_tab);
-	});
-
-	service.Register(CommandId::FileNewNodeGraph, [ctx]() mutable {
 		EditorTab new_tab = MakeDefaultSceneTab(ctx.editor_area);
 		ctx.editor_area.AddTab(new_tab);
 	});
@@ -84,6 +71,26 @@ void RegisterFileCommands(CommandService& service, CommandHandlersContext ctx)
 		new_tab.path = "C:/path/to/example.cpp";
 		ctx.editor_area.AddTab(new_tab);
 	});
+
+    service.Register(CommandId::FileOpenFolder, [ctx]() mutable {
+        const std::string folder = UI::PickFolderPathFromDialog();
+        if (folder.empty()) {
+            ctx.notification.SetMessage("Open Folder canceled");
+            return;
+        }
+        UI::SetExplorerRootPath(folder);
+        ctx.notification.SetMessage("Folder opened: " + folder);
+    });
+
+    service.Register(CommandId::FileOpenProject, [ctx]() mutable {
+        const std::string folder = UI::PickFolderPathFromDialog();
+        if (folder.empty()) {
+            ctx.notification.SetMessage("Open Project canceled");
+            return;
+        }
+        UI::SetExplorerRootPath(folder);
+        ctx.notification.SetMessage("Project opened: " + folder);
+    });
 
 	service.Register(CommandId::FileSave, [ctx]() mutable {
 		ctx.notification.SetMessage("File saved");

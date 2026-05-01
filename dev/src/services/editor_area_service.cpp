@@ -24,8 +24,15 @@ const EditorTab* EditorAreaService::GetActiveTab() const {
 }
 
 void EditorAreaService::AddTab(const EditorTab& tab) {
+    EditorTab new_tab = tab;
+    if (new_tab.id == 0) {
+        new_tab.id = next_tab_id_++;
+    } else if (new_tab.id >= next_tab_id_) {
+        next_tab_id_ = new_tab.id + 1;
+    }
+
     for (auto& t : tabs_) t.active = false;
-    tabs_.push_back(tab);
+    tabs_.push_back(std::move(new_tab));
     active_tab_index_ = static_cast<int>(tabs_.size()) - 1;
     tabs_[active_tab_index_].active = true;
 }
@@ -85,6 +92,16 @@ void EditorAreaService::CloseActiveTab() {
 
 void EditorAreaService::SetTabs(const std::vector<EditorTab>& tabs) {
     tabs_ = tabs;
+    uint64_t max_id = 0;
+    for (auto& tab : tabs_) {
+        if (tab.id == 0) {
+            tab.id = ++max_id;
+        }
+        if (tab.id > max_id) {
+            max_id = tab.id;
+        }
+    }
+    next_tab_id_ = max_id + 1;
     RebuildActiveTabIndex();
 }
 

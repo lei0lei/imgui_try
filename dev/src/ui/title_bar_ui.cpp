@@ -122,7 +122,8 @@ void DrawPhageIcon(ImDrawList* draw_list, ImVec2 center, float size, ImU32 color
     }
 }
 
-static void RenderMenuBar(const TitleBarViewModel& view_model,
+static void RenderMenuBar(const TitleBarProps& props,
+                          TitleBarResult& result,
                           const WorkbenchThemeSizes& sizes,
                           const WorkbenchThemeColors& colors,
                           ImDrawList* draw_list,
@@ -138,7 +139,7 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
 {
     const char* menu_names[] = { "File", "Edit", "View", "Help" };
     const int menu_count = 4;
-    int active_menu = (int)view_model.active_menu - 1;
+    int active_menu = (int)props.active_menu - 1;
     bool menu_click_handled = false;
     for (int i = 0; i < menu_count; i++) {
         ImVec2 btn_pos = ImVec2(window_pos.x + menu_x + i * menu_btn_w, window_pos.y);
@@ -148,8 +149,6 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
         bool is_hovered = (mouse_pos.x >= btn_pos.x && mouse_pos.x <= btn_max.x && mouse_pos.y >= btn_pos.y && mouse_pos.y <= btn_max.y);
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             active_menu = (active_menu == i) ? -1 : i;
-            if (view_model.set_active_menu)
-                view_model.set_active_menu(active_menu >= 0 ? (TitleBarMenu)(active_menu + 1) : TitleBarMenu::None);
             menu_click_handled = true;
         }
         ImU32 btn_bg = (is_hovered || active_menu == i) ? ImGui::GetColorU32(menu_hover) : ImGui::GetColorU32(bg_color);
@@ -157,13 +156,13 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
         ImVec2 text_pos = ImVec2(btn_pos.x + sizes.title_menu_text_padding_x, btn_pos.y + (title_h - ImGui::GetTextLineHeight()) * 0.5f);
         draw_list->AddText(text_pos, ImGui::GetColorU32(text_color), menu_names[i]);
         if (active_menu == i) {
-            const char* items[] = { nullptr, nullptr, nullptr, nullptr, nullptr };
-            if (i == 0) { items[0] = "Save"; items[1] = "Exit"; }
+            const char* items[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+            if (i == 0) { items[0] = "Open Folder"; items[1] = "Open Project"; items[2] = "Save"; items[3] = "Exit"; }
             else if (i == 1) { items[0] = "Undo"; items[1] = "Redo"; }
             else if (i == 2) { items[0] = "Explorer"; }
             else if (i == 3) { items[0] = "About"; }
             float menu_item_h = sizes.title_menu_item_h;
-            int item_count = 0; for (int j = 0; j < 5; j++) if (items[j]) item_count++;
+            int item_count = 0; for (int j = 0; j < 6; j++) if (items[j]) item_count++;
             ImVec2 dropdown_pos = ImVec2(btn_pos.x, btn_max.y);
             ImVec2 dropdown_size = ImVec2(dropdown_w, menu_item_h * item_count);
             ImVec2 dropdown_max = ImVec2(dropdown_pos.x + dropdown_size.x, dropdown_pos.y + dropdown_size.y);
@@ -181,26 +180,18 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
                 fg_list->AddText(ImVec2(item_pos.x + sizes.title_menu_text_padding_x, centered_y), ImGui::GetColorU32(text_color), items[j]);
                 if (item_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
                     active_menu = -1;
-                    if (view_model.set_active_menu)
-                        view_model.set_active_menu(TitleBarMenu::None);
                     if (i == 0) {
-                        if (view_model.trigger_command) {
-                            if (j == 0) view_model.trigger_command(CommandId::FileSave);
-                            else if (j == 1) view_model.trigger_command(CommandId::FileExit);
-                        }
+                        if (j == 0) result.commands.push_back(CommandId::FileOpenFolder);
+                        else if (j == 1) result.commands.push_back(CommandId::FileOpenProject);
+                        else if (j == 2) result.commands.push_back(CommandId::FileSave);
+                        else if (j == 3) result.commands.push_back(CommandId::FileExit);
                     } else if (i == 1) {
-                        if (view_model.trigger_command) {
-                            if (j == 0) view_model.trigger_command(CommandId::EditUndo);
-                            else if (j == 1) view_model.trigger_command(CommandId::EditRedo);
-                        }
+                        if (j == 0) result.commands.push_back(CommandId::EditUndo);
+                        else if (j == 1) result.commands.push_back(CommandId::EditRedo);
                     } else if (i == 2) {
-                        if (view_model.trigger_command) {
-                            if (j == 0) view_model.trigger_command(CommandId::ViewExplorer);
-                        }
+                        if (j == 0) result.commands.push_back(CommandId::ViewExplorer);
                     } else if (i == 3) {
-                        if (view_model.trigger_command) {
-                            if (j == 0) view_model.trigger_command(CommandId::HelpAbout);
-                        }
+                        if (j == 0) result.commands.push_back(CommandId::HelpAbout);
                     }
                     menu_click_handled = true;
                 }
@@ -208,8 +199,7 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
         }
     }
     if (menu_click_handled) {
-        if (view_model.request_block_tab_clicks_once)
-            view_model.request_block_tab_clicks_once();
+        result.block_tab_clicks_once = true;
     }
     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !menu_click_handled) {
         ImVec2 mouse_pos = ImGui::GetMousePos();
@@ -218,13 +208,13 @@ static void RenderMenuBar(const TitleBarViewModel& view_model,
         bool in_dropdown = (mouse_pos.x >= dropdown_btn_pos.x && mouse_pos.x <= dropdown_btn_pos.x + dropdown_w && mouse_pos.y >= dropdown_btn_pos.y && mouse_pos.y <= dropdown_btn_pos.y + 200);
         if (!in_menu_buttons && !in_dropdown) active_menu = -1;
         active_menu = -1;
-        if (view_model.set_active_menu)
-            view_model.set_active_menu(TitleBarMenu::None);
     }
+    result.menu = (active_menu < 0) ? TitleBarMenu::None : (TitleBarMenu)(active_menu + 1);
 }
 
 static float RenderLayoutAndWindowButtons(SDL_Window* window,
-                                          const TitleBarViewModel& view_model,
+                                          const TitleBarProps& props,
+                                          TitleBarResult& result,
                                           const WorkbenchThemeSizes& sizes,
                                           const WorkbenchThemeColors& colors,
                                           ImDrawList* draw_list,
@@ -267,14 +257,16 @@ static float RenderLayoutAndWindowButtons(SDL_Window* window,
     auto draw_layout_btn = [&](float x_pos, const char* id, auto draw_icon) -> bool {
         return draw_square_btn(x_pos, layout_btn_w, layout_btn_h, id, btn_normal, btn_hover, btn_active, draw_icon);
     };
+
     bool btn_layout_left = draw_layout_btn(layout_start_x, "layout_left", [&](ImVec2 c, bool h){
-        float alpha = view_model.primary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
+        float alpha = props.primary_sidebar_visible ? (h ? 1.0f : 0.9f) : (h ? 0.7f : 0.5f);
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_layout_icon.x, colors.title_bar_layout_icon.y, colors.title_bar_layout_icon.z, alpha));
         float half = sizes.title_layout_icon_size;
         draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x+half, c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
-        if (view_model.primary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y-(half-2.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-2.0f)), col);
+        if (props.primary_sidebar_visible) draw_list->AddRectFilled(ImVec2(c.x-(half-1.0f), c.y-(half-2.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-2.0f)), col);
         else draw_list->AddRect(ImVec2(c.x-half, c.y-(half-1.0f)), ImVec2(c.x-(half*0.25f), c.y+(half-1.0f)), col, sizes.title_layout_icon_rounding, 0, sizes.title_layout_icon_stroke);
     });
+
     bool btn_min = draw_control_btn(btn_start_x, "min", btn_normal, btn_hover, btn_active, [&](ImVec2 center, bool hovered) {
         ImU32 col = ImGui::GetColorU32(ImVec4(colors.title_bar_control_icon.x, colors.title_bar_control_icon.y, colors.title_bar_control_icon.z, hovered ? 1.0f : 0.8f));
         draw_list->AddLine(ImVec2(center.x - sizes.title_close_icon_size, center.y), ImVec2(center.x + sizes.title_close_icon_size, center.y), col, sizes.title_button_icon_stroke);
@@ -295,14 +287,40 @@ static float RenderLayoutAndWindowButtons(SDL_Window* window,
         draw_list->AddLine(ImVec2(center.x - size, center.y - size), ImVec2(center.x + size, center.y + size), col, 1.0f);
         draw_list->AddLine(ImVec2(center.x - size, center.y + size), ImVec2(center.x + size, center.y - size), col, 1.0f);
     });
-    if (view_model.trigger_command) {
-        if (btn_layout_left) view_model.trigger_command(CommandId::TogglePrimarySidebar);
-        if (btn_min) view_model.trigger_command(CommandId::WindowMinimize);
-        if (btn_max) view_model.trigger_command(CommandId::WindowMaximize);
-        if (btn_close) view_model.trigger_command(CommandId::WindowClose);
-    }
+    if (btn_layout_left) result.commands.push_back(CommandId::TogglePrimarySidebar);
+    if (btn_min) result.commands.push_back(CommandId::WindowMinimize);
+    if (btn_max) result.commands.push_back(CommandId::WindowMaximize);
+    if (btn_close) result.commands.push_back(CommandId::WindowClose);
 
     return layout_start_x;
+}
+
+static void RenderSceneTitleBarExtension(const TitleBarProps& props,
+                                         TitleBarResult& result,
+                                         TitleBarExtensionRegion region,
+                                         ImVec2 region_min,
+                                         ImVec2 region_max,
+                                         float title_h)
+{
+    if (!props.scene_titlebar_extension || !(*props.scene_titlebar_extension)) {
+        return;
+    }
+    if (region_max.x <= region_min.x || region_max.y <= region_min.y) {
+        return;
+    }
+
+    ImGui::PushClipRect(region_min, region_max, true);
+    ImGui::SetCursorScreenPos(ImVec2(region_min.x, region_min.y));
+    TitleBarExtensionContext ctx{};
+    ctx.region = region;
+    ctx.region_min = region_min;
+    ctx.region_max = region_max;
+    ctx.title_h = title_h;
+    ctx.active_tab = props.active_tab;
+    ctx.trigger_command = [&result](CommandId id) { result.commands.push_back(id); };
+    ctx.trigger_scene_action = [&result](const std::string& action_id) { result.scene_actions.push_back(action_id); };
+    (*props.scene_titlebar_extension)(ctx);
+    ImGui::PopClipRect();
 }
 
 static void HandleWindowDrag(SDL_Window* window, float title_h, float layout_start_x, ImGuiIO& io)
@@ -359,8 +377,10 @@ static void HandleWindowDrag(SDL_Window* window, float title_h, float layout_sta
     } else { title_dragging = false; pending_restore = false; }
 }
 
-void RenderTitleBarUI(SDL_Window* window, const TitleBarViewModel& view_model, float title_h)
+TitleBarResult RenderTitleBarUI(SDL_Window* window, const TitleBarProps& props, float title_h)
 {
+    TitleBarResult result{};
+    result.menu = props.active_menu;
     ImGuiIO& io = ImGui::GetIO();
     const WorkbenchTheme& theme = GetWorkbenchTheme();
     const WorkbenchThemeColors& colors = theme.colors;
@@ -404,10 +424,31 @@ void RenderTitleBarUI(SDL_Window* window, const TitleBarViewModel& view_model, f
     float menu_x = icon_offset_x + icon_layout_w + sizes.title_menu_spacing_x;
     float menu_btn_w = sizes.title_menu_btn_w;
     float dropdown_w = sizes.title_dropdown_w;
-    RenderMenuBar(view_model, sizes, colors, draw_list, fg_list, window_pos, title_h, menu_x, menu_btn_w, dropdown_w, bg_color, menu_hover, text_color);
 
     // === Right side: Layout buttons + Control buttons ===
-    float layout_start_x = RenderLayoutAndWindowButtons(window, view_model, sizes, colors, draw_list, io, title_h);
+    float layout_start_x = RenderLayoutAndWindowButtons(window, props, result, sizes, colors, draw_list, io, title_h);
+
+    const float menu_end_x = menu_x + menu_btn_w * 4.0f;
+    const float left_slot_min_x = icon_offset_x + icon_layout_w + 2.0f;
+    const float left_slot_max_x = menu_x - 2.0f;
+    (void)left_slot_min_x;
+    (void)left_slot_max_x;
+
+    const float center_min_x = menu_end_x + 8.0f;
+    const float max_slot_width = layout_start_x - center_min_x - 4.0f;
+    const float requested_slot_width = (props.scene_titlebar_extension_width > 0.0f)
+        ? props.scene_titlebar_extension_width
+        : 0.0f;
+    const float slot_width = (requested_slot_width > max_slot_width) ? max_slot_width : requested_slot_width;
+    const float right_slot_min_x = layout_start_x - slot_width;
+    RenderSceneTitleBarExtension(props,
+        result,
+        TitleBarExtensionRegion::Right,
+        ImVec2(window_pos.x + right_slot_min_x, window_pos.y),
+        ImVec2(window_pos.x + layout_start_x - 4.0f, window_pos.y + title_h),
+        title_h);
+
+    RenderMenuBar(props, result, sizes, colors, draw_list, fg_list, window_pos, title_h, menu_x, menu_btn_w, dropdown_w, bg_color, menu_hover, text_color);
     HandleWindowDrag(window, title_h, layout_start_x, io);
     ImGui::End();
     ImGui::PopStyleVar(4);
@@ -416,4 +457,5 @@ void RenderTitleBarUI(SDL_Window* window, const TitleBarViewModel& view_model, f
     ImVec2 line_start = ImVec2(0, title_h - sizes.title_bar_border_thickness);
     ImVec2 line_end = ImVec2(io.DisplaySize.x, title_h - sizes.title_bar_border_thickness);
     fg->AddLine(line_start, line_end, border_color, sizes.title_bar_border_thickness);
+    return result;
 }

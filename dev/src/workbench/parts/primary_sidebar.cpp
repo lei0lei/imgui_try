@@ -22,12 +22,14 @@ PrimarySidebarPart::PrimarySidebarPart(IPrimarySidebarService& service)
 	 EditorTab* active_tab,
 	 ActivityBarItem active_item)
  {
-	 PrimarySidebarViewModel vm{};
-	 vm.active_view = view_registry.GetActiveView(scene_plugin_id, ViewContainer::PrimarySidebar);
-	 vm.fallback_view = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, active_item);
-	 vm.is_visible = service_.IsVisible();
-	 vm.active_item = active_item;
-	 return DrawPrimarySidebarUI(activity_bar_w, title_h, status_bar_h, width, vm, active_tab);
+	 PrimarySidebarProps props{};
+	 props.activity_bar_w = activity_bar_w;
+	 props.title_h = title_h;
+	 props.status_bar_h = status_bar_h;
+	 props.width = width;
+	 props.active_view = view_registry.GetActiveView(scene_plugin_id);
+	 props.fallback_view = UI::GetDefaultPrimaryViewForPlugin(scene_plugin_id, active_item);
+	 return DrawPrimarySidebarUI(props, active_tab);
  }
 
  IPrimarySidebarService& PrimarySidebarPart::GetService()

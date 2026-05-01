@@ -378,6 +378,12 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
     wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->SemaphoreCount; // Now we can use the next set of semaphores
 }
 
+static ServiceOverrides BuildWorkbenchServiceOverrides()
+{
+    ServiceOverrides overrides = Workbench::BuildDefaultServiceOverrides();
+    return overrides;
+}
+
 // 主流程
 int main(int, char**)
 {
@@ -494,7 +500,8 @@ int main(int, char**)
     bool done = false;
 
     // 创建 Workbench 实例
-    Workbench workbench(window);
+    const ServiceOverrides service_overrides = BuildWorkbenchServiceOverrides();
+    Workbench workbench(window, service_overrides);
     workbench.InitializeIconSystem(g_PhysicalDevice, g_Device, g_QueueFamily, g_Queue, g_Allocator);
 
 
@@ -568,8 +575,6 @@ int main(int, char**)
         // 渲染Editor area
         workbench.RenderEditorArea(metrics, layout);
         
-
-
         // Rendering
         ImGui::Render();
         ImDrawData* draw_data = ImGui::GetDrawData();

@@ -56,7 +56,8 @@ void ConfigureActivityBarIcons()
         { ActivityBarItem::Search, "activity.search", "paper.png" },
         { ActivityBarItem::Debug, "activity.debug", "play.png" },
         { ActivityBarItem::Editor, "activity.editor", "area.png" },
-        { ActivityBarItem::Extensions, "activity.extensions", "extension.png" }
+        { ActivityBarItem::Extensions, "activity.extensions", "extension.png" },
+        { ActivityBarItem::Training, "activity.training", "puzzle.png" }
     };
 
     for (const ActivityIconBinding& binding : bindings)
@@ -72,6 +73,7 @@ void ClearActivityBarIcons()
     SetActivityBarIconTexture(ActivityBarItem::Debug, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Editor, (ImTextureID)0);
     SetActivityBarIconTexture(ActivityBarItem::Extensions, (ImTextureID)0);
+    SetActivityBarIconTexture(ActivityBarItem::Training, (ImTextureID)0);
     SetActivityBarSettingsIconTexture((ImTextureID)0);
 }
 
@@ -103,7 +105,7 @@ void ShutdownActivityBarIconSystem()
     IconTextureManagerShutdown();
 }
 
-ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarViewModel& view_model)
+ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float width, const ActivityBarProps& props)
 {
     ActivityBarResult result{};
     ImGuiIO& io = ImGui::GetIO();
@@ -148,12 +150,13 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
         { ActivityBarItem::Search, "Search" },
         { ActivityBarItem::Debug, "Debug" },
         { ActivityBarItem::Editor, "Editor" },
-        { ActivityBarItem::Extensions, "Extensions" }
+        { ActivityBarItem::Extensions, "Extensions" },
+        { ActivityBarItem::Training, "Training" }
     };
     constexpr int item_count = sizeof(items) / sizeof(items[0]);
     float item_size = width;
     float item_y = window_pos.y + sizes.activity_bar_padding_y;
-    int selected = view_model.selected_index;
+    int selected = props.selected_index;
     for (int i = 0; i < item_count; ++i) {
         ImVec2 item_min = ImVec2(window_pos.x, item_y);
         ImVec2 item_max = ImVec2(window_pos.x + width, item_y + item_size);
@@ -203,14 +206,25 @@ ActivityBarResult DrawActivityBarUI(float title_h, float status_bar_h, float wid
                     draw_list->AddRectFilled(ImVec2(icon_center.x + icon_size * 0.1f, icon_center.y + icon_size * 0.1f),
                                            ImVec2(icon_center.x + icon_size * 0.4f, icon_center.y + icon_size * 0.4f), icon_col);
                     break;
+                case ActivityBarItem::Training: {
+                    const float w = icon_size * 0.22f;
+                    const float gap = icon_size * 0.12f;
+                    const float x0 = icon_center.x - icon_size * 0.42f;
+                    const float base_y = icon_center.y + icon_size * 0.35f;
+                    const float h0 = icon_size * 0.55f;
+                    const float h1 = icon_size * 0.35f;
+                    const float h2 = icon_size * 0.75f;
+                    draw_list->AddRectFilled(ImVec2(x0, base_y - h0), ImVec2(x0 + w, base_y), icon_col);
+                    draw_list->AddRectFilled(ImVec2(x0 + w + gap, base_y - h1), ImVec2(x0 + w + gap + w, base_y), icon_col);
+                    draw_list->AddRectFilled(ImVec2(x0 + 2.0f * (w + gap), base_y - h2), ImVec2(x0 + 2.0f * (w + gap) + w, base_y), icon_col);
+                    break;
+                }
                 default:
                     break;
             }
         }
         if (is_hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
             selected = static_cast<int>(items[i].id);
-            if (view_model.on_select)
-                view_model.on_select(selected);
             result.selected_item = items[i].id;
             result.item_clicked = true;
         }
