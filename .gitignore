@@ -82,3 +82,6 @@ dev/docs/api/html/
 dev/docs/api/latex/
 dev/docs/api/man/
 *.pdf
+
+## Machine-local CMake paths (see cmake/local_paths.cmake.example)
+cmake/local_paths.cmake

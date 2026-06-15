@@ -42,7 +42,7 @@
 		{
 			"label": "Run dev SDL3 Vulkan Example",
 			"type": "shell",
-			"command": "${workspaceFolder}/dev/build/Debug/imgui_dev.exe",
+			"command": "${workspaceFolder}/dev/build/Debug/Imgui_dev.exe",
 			"problemMatcher": [],
 			"dependsOn": "CMake: Build (dev SDL3 Vulkan)"
 		},
@@ -58,7 +58,7 @@
 		{
 			"label": "Run dev SDL3 Vulkan Example (manual)",
 			"type": "shell",
-			"command": "dev/build/Debug/imgui_dev.exe",
+			"command": "dev/build/Debug/Imgui_dev.exe",
 			"group": "test"
 		},
 		{
