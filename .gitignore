@@ -56,7 +56,7 @@ examples/example_sdl3_wgpu/web/*
 cmake-build-*
 
 ## VS code artifacts
-.vscode
+# .vscode
 
 ## Unix executables from our example Makefiles
 examples/example_apple_metal/example_apple_metal
