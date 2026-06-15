@@ -1,7 +1,0 @@
-# Scene plugin manifest
-id=scene.3d
-name=3D Scene Tools
-info=Open a realtime 3D workspace with rendering playground.
-author=lei0lei
-icon=3D
-mode=1

@@ -1,7 +1,0 @@
-# Scene plugin manifest
-id=scene.2d
-name=2D Scene Tools
-info=Create and inspect 2D scene workflows for experiments.
-author=lei0lei
-icon=2D
-mode=0
