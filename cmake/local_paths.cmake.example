@@ -1,17 +1,20 @@
-# Machine-local dependency paths (one copy per machine).
+# Optional machine-local overrides (one copy per machine).
 #
 # Setup:
 #   copy cmake\local_paths.cmake.example cmake\local_paths.cmake
-#   Edit the paths below for your machine.
+#   Uncomment only the dependencies you want to use from a local checkout.
 #
-# Paths can still be overridden on the cmake command line, e.g.:
-#   cmake -S templ -B templ/build -DSDL3_SOURCE_DIR=D:/src/SDL
+# Without these overrides, CMake downloads all dependencies from GitHub.
+# The same values may be passed on the command line, for example:
+#   cmake -S . -B build -DFETCHCONTENT_SOURCE_DIR_SDL3=D:/src/SDL
 
-# Paths use CACHE ... FORCE so edits here apply on the next cmake configure
-# (without deleting the build directory). Command-line -D overrides are still
-# possible if passed after this file is loaded — prefer editing this file.
+# set(FETCHCONTENT_SOURCE_DIR_SDL3 "D:/src/SDL" CACHE PATH "Local SDL3 checkout")
+# set(FETCHCONTENT_SOURCE_DIR_VOLK "D:/src/volk" CACHE PATH "Local volk checkout")
+# set(FETCHCONTENT_SOURCE_DIR_VK_BOOTSTRAP "D:/src/vk-bootstrap" CACHE PATH "Local vk-bootstrap checkout")
 
-set(SDL3_SOURCE_DIR "D:/path/to/SDL" CACHE PATH "Path to SDL3 source tree (contains CMakeLists.txt)" FORCE)
-set(IMGUITRY_VOLK_SOURCE_DIR "D:/path/to/volk" CACHE PATH "Path to volk source tree (contains CMakeLists.txt)" FORCE)
-set(LUA_SOURCE_DIR "D:/path/to/lua-5.5.0" CACHE PATH "Path to Lua source tree (contains CMakeLists.txt)" FORCE)
-set(DOXYGEN_EXECUTABLE "C:/Program Files/doxygen/bin/doxygen.exe" CACHE FILEPATH "Path to Doxygen executable (optional)" FORCE)
+# Lua's override must use the layout of https://github.com/lua/lua
+# (source files such as lapi.c are in the repository root).
+# set(FETCHCONTENT_SOURCE_DIR_LUA "D:/src/lua" CACHE PATH "Local Lua checkout")
+
+# set(DOXYGEN_EXECUTABLE "C:/Program Files/doxygen/bin/doxygen.exe"
+#     CACHE FILEPATH "Path to Doxygen executable")

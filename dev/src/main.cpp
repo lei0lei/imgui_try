@@ -17,6 +17,7 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_vulkan.h"
 #include "test_component.h"
+#include <VkBootstrap.h>
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
 #include <SDL3/SDL.h>
@@ -34,13 +35,11 @@
 #endif
 
 //#define APP_USE_UNLIMITED_FRAME_RATE
-#ifdef _DEBUG
-#define APP_USE_VULKAN_DEBUG_REPORT
-static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
-#endif
 
 // Data
 static VkAllocationCallbacks*   g_Allocator = nullptr;
+static vkb::Instance            g_VkbInstance;
+static vkb::Device              g_VkbDevice;
 static VkInstance               g_Instance = VK_NULL_HANDLE;
 static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice                 g_Device = VK_NULL_HANDLE;
@@ -62,145 +61,96 @@ static void check_vk_result(VkResult err)
         abort();
 }
 
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
-static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+static bool SetupVulkanInstance(const ImVector<const char*>& instance_extensions)
 {
-    (void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
-    fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
-    return VK_FALSE;
-}
-#endif // APP_USE_VULKAN_DEBUG_REPORT
-
-static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension)
-{
-    for (const VkExtensionProperties& p : properties)
-        if (strcmp(p.extensionName, extension) == 0)
-            return true;
-    return false;
-}
-
-static void SetupVulkan(ImVector<const char*> instance_extensions)
-{
-    VkResult err;
 #ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-    volkInitialize();
-#endif
-
-    // Create Vulkan Instance
+    const VkResult volk_result = volkInitialize();
+    if (volk_result != VK_SUCCESS)
     {
-        VkInstanceCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-
-        // Enumerate available extensions
-        uint32_t properties_count;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.Data);
-        check_vk_result(err);
-
-        // Enable required extensions
-        if (IsExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
-            instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-#ifdef VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME
-        if (IsExtensionAvailable(properties, VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
-        {
-            instance_extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-            create_info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-        }
+        fprintf(stderr, "Failed to initialize volk: VkResult = %d\n", volk_result);
+        return false;
+    }
 #endif
 
-        // Enabling validation layers
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
-        const char* layers[] = { "VK_LAYER_KHRONOS_validation" };
-        create_info.enabledLayerCount = 1;
-        create_info.ppEnabledLayerNames = layers;
-        instance_extensions.push_back("VK_EXT_debug_report");
+    vkb::InstanceBuilder builder;
+    builder.set_app_name("Imgui_dev")
+        .enable_extensions(static_cast<size_t>(instance_extensions.Size), instance_extensions.Data);
+#ifdef _DEBUG
+    builder.request_validation_layers().use_default_debug_messenger();
 #endif
 
-        // Create Vulkan Instance
-        create_info.enabledExtensionCount = (uint32_t)instance_extensions.Size;
-        create_info.ppEnabledExtensionNames = instance_extensions.Data;
-        err = vkCreateInstance(&create_info, g_Allocator, &g_Instance);
-        check_vk_result(err);
+    auto instance_result = builder.build();
+    if (!instance_result)
+    {
+        fprintf(stderr, "Failed to create Vulkan instance: %s\n", instance_result.error().message().c_str());
+        return false;
+    }
+
+    g_VkbInstance = instance_result.value();
+    g_Instance = g_VkbInstance.instance;
 #ifdef IMGUI_IMPL_VULKAN_USE_VOLK
-        volkLoadInstance(g_Instance);
+    volkLoadInstance(g_Instance);
 #endif
+    return true;
+}
 
-        // Setup the debug report callback
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
-        auto f_vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkCreateDebugReportCallbackEXT");
-        IM_ASSERT(f_vkCreateDebugReportCallbackEXT != nullptr);
-        VkDebugReportCallbackCreateInfoEXT debug_report_ci = {};
-        debug_report_ci.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-        debug_report_ci.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-        debug_report_ci.pfnCallback = debug_report;
-        debug_report_ci.pUserData = nullptr;
-        err = f_vkCreateDebugReportCallbackEXT(g_Instance, &debug_report_ci, g_Allocator, &g_DebugReport);
-        check_vk_result(err);
-#endif
-    }
-
-    // Select Physical Device (GPU)
-    g_PhysicalDevice = ImGui_ImplVulkanH_SelectPhysicalDevice(g_Instance);
-    IM_ASSERT(g_PhysicalDevice != VK_NULL_HANDLE);
-
-    // Select graphics queue family
-    g_QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(g_PhysicalDevice);
-    IM_ASSERT(g_QueueFamily != (uint32_t)-1);
-
-    // Create Logical Device (with 1 queue)
+static bool SetupVulkanDevice(VkSurfaceKHR surface)
+{
+    auto physical_device_result = vkb::PhysicalDeviceSelector{ g_VkbInstance }
+        .set_surface(surface)
+        .select();
+    if (!physical_device_result)
     {
-        ImVector<const char*> device_extensions;
-        device_extensions.push_back("VK_KHR_swapchain");
+        fprintf(stderr, "Failed to select Vulkan physical device: %s\n", physical_device_result.error().message().c_str());
+        return false;
+    }
 
-        // Enumerate physical device extension
-        uint32_t properties_count;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, properties.Data);
-#ifdef VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME
-        if (IsExtensionAvailable(properties, VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME))
-            device_extensions.push_back(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+    auto device_result = vkb::DeviceBuilder{ physical_device_result.value() }.build();
+    if (!device_result)
+    {
+        fprintf(stderr, "Failed to create Vulkan device: %s\n", device_result.error().message().c_str());
+        return false;
+    }
+
+    g_VkbDevice = device_result.value();
+    auto graphics_queue_result = g_VkbDevice.get_queue(vkb::QueueType::graphics);
+    auto graphics_queue_index_result = g_VkbDevice.get_queue_index(vkb::QueueType::graphics);
+    auto present_queue_index_result = g_VkbDevice.get_queue_index(vkb::QueueType::present);
+    if (!graphics_queue_result || !graphics_queue_index_result || !present_queue_index_result)
+    {
+        fprintf(stderr, "Failed to find Vulkan graphics/present queues.\n");
+        return false;
+    }
+    if (graphics_queue_index_result.value() != present_queue_index_result.value())
+    {
+        fprintf(stderr, "Separate Vulkan graphics and present queue families are not supported.\n");
+        return false;
+    }
+
+    g_PhysicalDevice = g_VkbDevice.physical_device.physical_device;
+    g_Device = g_VkbDevice.device;
+    g_Queue = graphics_queue_result.value();
+    g_QueueFamily = graphics_queue_index_result.value();
+#ifdef IMGUI_IMPL_VULKAN_USE_VOLK
+    volkLoadDevice(g_Device);
 #endif
 
-        const float queue_priority[] = { 1.0f };
-        VkDeviceQueueCreateInfo queue_info[1] = {};
-        queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info[0].queueFamilyIndex = g_QueueFamily;
-        queue_info[0].queueCount = 1;
-        queue_info[0].pQueuePriorities = queue_priority;
-        VkDeviceCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.queueCreateInfoCount = sizeof(queue_info) / sizeof(queue_info[0]);
-        create_info.pQueueCreateInfos = queue_info;
-        create_info.enabledExtensionCount = (uint32_t)device_extensions.Size;
-        create_info.ppEnabledExtensionNames = device_extensions.Data;
-        err = vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_Device);
-        check_vk_result(err);
-        vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
-    }
-
-    // Create Descriptor Pool
-    // If you wish to load e.g. additional textures you may need to alter pools sizes and maxSets.
+    VkDescriptorPoolSize pool_sizes[] =
     {
-        VkDescriptorPoolSize pool_sizes[] =
-        {
-            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE },
-            { VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE },
-        };
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize& pool_size : pool_sizes)
-            pool_info.maxSets += pool_size.descriptorCount;
-        pool_info.poolSizeCount = (uint32_t)IM_COUNTOF(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-        err = vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool);
-        check_vk_result(err);
-    }
+        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLED_IMAGE_POOL_SIZE },
+        { VK_DESCRIPTOR_TYPE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_SAMPLER_POOL_SIZE },
+    };
+    VkDescriptorPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    pool_info.maxSets = 0;
+    for (VkDescriptorPoolSize& pool_size : pool_sizes)
+        pool_info.maxSets += pool_size.descriptorCount;
+    pool_info.poolSizeCount = (uint32_t)IM_COUNTOF(pool_sizes);
+    pool_info.pPoolSizes = pool_sizes;
+    const VkResult err = vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool);
+    check_vk_result(err);
+    return true;
 }
 
 // All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
@@ -239,15 +189,8 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
 static void CleanupVulkan()
 {
     vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
-
-#ifdef APP_USE_VULKAN_DEBUG_REPORT
-    // Remove the debug report callback
-    auto f_vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkDestroyDebugReportCallbackEXT");
-    f_vkDestroyDebugReportCallbackEXT(g_Instance, g_DebugReport, g_Allocator);
-#endif // APP_USE_VULKAN_DEBUG_REPORT
-
-    vkDestroyDevice(g_Device, g_Allocator);
-    vkDestroyInstance(g_Instance, g_Allocator);
+    vkb::destroy_device(g_VkbDevice);
+    vkb::destroy_instance(g_VkbInstance);
 }
 
 static void CleanupVulkanWindow(ImGui_ImplVulkanH_Window* wd)
@@ -371,7 +314,8 @@ int main(int, char**)
         for (uint32_t n = 0; n < sdl_extensions_count; n++)
             extensions.push_back(sdl_extensions[n]);
     }
-    SetupVulkan(extensions);
+    if (!SetupVulkanInstance(extensions))
+        return 1;
 
     // Create Window Surface
     VkSurfaceKHR surface;
@@ -381,6 +325,8 @@ int main(int, char**)
         printf("Failed to create Vulkan surface.\n");
         return 1;
     }
+    if (!SetupVulkanDevice(surface))
+        return 1;
 
     // Create Framebuffers
     int w, h;
