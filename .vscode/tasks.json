@@ -7,7 +7,7 @@
 			"command": "cmake",
 			"args": [
 				"-S",
-				"${workspaceFolder}/dev",
+				"${workspaceFolder}",
 				"-B",
 				"${workspaceFolder}/dev/build",
 				"-G",

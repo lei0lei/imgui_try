@@ -2,20 +2,21 @@ cmake_minimum_required(VERSION 3.22)
 project(imgui_try LANGUAGES CXX C)
 
 include(FetchContent)
-
+# 本地路径
 set(_imguitry_local_paths "${CMAKE_CURRENT_SOURCE_DIR}/cmake/local_paths.cmake")
 if(EXISTS "${_imguitry_local_paths}")
     include("${_imguitry_local_paths}")
 endif()
 unset(_imguitry_local_paths)
 
+# 选项
 option(IMGUITRY_BUILD_DEV "Build the imgui_try development application" ${PROJECT_IS_TOP_LEVEL})
 option(IMGUITRY_USE_VOLK "Use volk as Vulkan function loader" OFF)
 option(IMGUITRY_WITH_LUA "Fetch and build Lua support" ON)
 
 find_package(Vulkan REQUIRED)
 
-# SDL3
+# SDL3 获取
 if(NOT TARGET SDL3::SDL3)
     set(SDL_TEST OFF CACHE BOOL "" FORCE)
     set(SDL_STATIC OFF CACHE BOOL "" FORCE)
@@ -29,7 +30,7 @@ if(NOT TARGET SDL3::SDL3)
     FetchContent_MakeAvailable(SDL3)
 endif()
 
-# vk-bootstrap
+# vk-bootstrap 获取
 if(NOT TARGET vk-bootstrap::vk-bootstrap)
     set(VK_BOOTSTRAP_TEST OFF CACHE BOOL "" FORCE)
     set(VK_BOOTSTRAP_INSTALL OFF CACHE BOOL "" FORCE)
@@ -42,7 +43,7 @@ if(NOT TARGET vk-bootstrap::vk-bootstrap)
     FetchContent_MakeAvailable(vk_bootstrap)
 endif()
 
-# volk
+# volk 获取
 if(IMGUITRY_USE_VOLK AND NOT TARGET volk::volk)
     set(VOLK_INSTALL OFF CACHE BOOL "" FORCE)
     set(VOLK_PULL_IN_VULKAN ON CACHE BOOL "" FORCE)
@@ -55,8 +56,7 @@ if(IMGUITRY_USE_VOLK AND NOT TARGET volk::volk)
     FetchContent_MakeAvailable(volk)
 endif()
 
-# The official Lua repository has no CMakeLists.txt, so populate its sources
-# and define the static-library target here.
+# Lua 获取
 if(IMGUITRY_WITH_LUA AND NOT TARGET imgui_try_lua)
     FetchContent_Declare(
         lua
@@ -107,6 +107,7 @@ if(IMGUITRY_WITH_LUA AND NOT TARGET imgui_try_lua)
     target_include_directories(imgui_try_lua PUBLIC "${lua_SOURCE_DIR}")
 endif()
 
+# ImGui 获取
 set(IMGUITRY_IMGUI_SOURCES
     imgui.cpp
     imgui_demo.cpp
@@ -118,37 +119,38 @@ set(IMGUITRY_IMGUI_SOURCES
 )
 list(TRANSFORM IMGUITRY_IMGUI_SOURCES PREPEND "${CMAKE_CURRENT_SOURCE_DIR}/")
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/collect_src_files.cmake")
-imguitry_collect_src_files(IMGUITRY_COMPONENT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/dev/src")
-list(FILTER IMGUITRY_COMPONENT_SOURCES EXCLUDE REGEX "[/\\\\]main\\.cpp$")
-
-add_library(imgui_try_ui STATIC
+# ImGui 静态库
+add_library(imgui_try_imgui STATIC
     ${IMGUITRY_IMGUI_SOURCES}
-    ${IMGUITRY_COMPONENT_SOURCES}
 )
-add_library(imgui_try::ui ALIAS imgui_try_ui)
+# ImGui 静态库别名
+add_library(imgui_try::imgui ALIAS imgui_try_imgui)
 
-target_compile_features(imgui_try_ui PUBLIC cxx_std_17)
-target_include_directories(imgui_try_ui PUBLIC
+target_compile_features(imgui_try_imgui PUBLIC cxx_std_17)
+# ImGui 头文件路径
+target_include_directories(imgui_try_imgui PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}/backends"
-    "${CMAKE_CURRENT_SOURCE_DIR}/dev/src"
 )
-target_link_libraries(imgui_try_ui PUBLIC
+# ImGui 链接库
+target_link_libraries(imgui_try_imgui PUBLIC
     SDL3::SDL3
     Vulkan::Vulkan
     vk-bootstrap::vk-bootstrap
 )
 
+# Lua 链接库
 if(IMGUITRY_WITH_LUA)
-    target_link_libraries(imgui_try_ui PUBLIC imgui_try::lua)
+    target_link_libraries(imgui_try_imgui PUBLIC imgui_try::lua)
 endif()
 
+# Volk 链接库
 if(IMGUITRY_USE_VOLK)
-    target_compile_definitions(imgui_try_ui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK)
-    target_link_libraries(imgui_try_ui PUBLIC volk::volk)
+    target_compile_definitions(imgui_try_imgui PUBLIC IMGUI_IMPL_VULKAN_USE_VOLK)
+    target_link_libraries(imgui_try_imgui PUBLIC volk::volk)
 endif()
 
+# 开发模式
 if(IMGUITRY_BUILD_DEV)
     add_subdirectory(dev)
 endif()

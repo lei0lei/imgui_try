@@ -1,4 +1,4 @@
-#include "test_component.h"
+#include "ui/test_component.h"
 
 #include "imgui.h"
 

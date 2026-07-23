@@ -1,26 +1,33 @@
-cmake_minimum_required(VERSION 3.22)
+# 本地路径
+file(GLOB_RECURSE IMGUITRY_UI_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
+)
 
-# Keep `cmake -S dev -B dev/build` working for local development. When this
-# directory is added by the repository root, all library targets already exist.
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    project(Imgui_dev LANGUAGES CXX C)
-    set(IMGUITRY_BUILD_DEV OFF CACHE BOOL "" FORCE)
-    add_subdirectory(".." "${CMAKE_BINARY_DIR}/imgui_try")
-endif()
+# ImGui UI 静态库
+add_library(imgui_try_ui STATIC ${IMGUITRY_UI_SOURCES})
+add_library(imgui_try::ui ALIAS imgui_try_ui)
+target_include_directories(imgui_try_ui PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_link_libraries(imgui_try_ui PUBLIC imgui_try::imgui)
 
+# ImGui 开发模式可执行文件
 add_executable(Imgui_dev src/main.cpp)
 target_link_libraries(Imgui_dev PRIVATE imgui_try::ui)
 
+# 链接选项
 if(WIN32)
     target_link_options(Imgui_dev PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup)
 endif()
 
+# 编译选项
 if(MSVC)
     target_compile_options(Imgui_dev PRIVATE /W4 /utf-8)
 else()
     target_compile_options(Imgui_dev PRIVATE -Wall -Wextra)
 endif()
 
+# 复制 SDL3 DLL 到输出目录
 add_custom_command(TARGET Imgui_dev POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     $<TARGET_FILE:SDL3::SDL3>
@@ -28,6 +35,7 @@ add_custom_command(TARGET Imgui_dev POST_BUILD
     COMMENT "Copying SDL3 DLL to output directory"
 )
 
+# Doxygen 文档生成
 find_package(Doxygen QUIET)
 if(DOXYGEN_FOUND)
     set(DOXYGEN_PROJECT_NAME "imgui_try-dev")
